@@ -376,7 +376,7 @@ def register_basename(basename: str, amount: float = 0.002):
         return f"Unexpected error registering basename: {str(e)}"
 
 # functions to interact with daos
-def vote_on_dao_proposal(dao_address: str, proposal_id: int, vote: bool) -> str:
+def vote_on_dao_proposal(dao_address: str, proposal_id: str, vote: bool) -> str:
     """
     Summon a DAO.
 
@@ -388,14 +388,14 @@ def vote_on_dao_proposal(dao_address: str, proposal_id: int, vote: bool) -> str:
     Returns:
         str: Success or error message.
     """
-    if not isinstance(dao_address, str) or not isinstance(proposal_id, int) or not isinstance(vote, bool):
+    if not isinstance(dao_address, str) or not isinstance(proposal_id, str) or not isinstance(vote, bool):
         return "Invalid input types"
 
     try:
 
         args_dict = {
-            "proposalId": proposal_id,
-            "vote": vote,
+            "id": proposal_id,
+            "approved": vote,
         }
 
         invocation = agent_wallet.invoke_contract(
@@ -444,7 +444,7 @@ def submit_dao_proposal(dao_address: str, proposal_title: str, proposal_descript
     try:
 
         args_dict = {
-            "proposalData": Web3().to_hex(Web3().to_bytes(0)),
+            "proposalData": "0x",
             "expiration": "0",
             "baalGas": "0",
             "details": proposal
