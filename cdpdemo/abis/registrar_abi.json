@@ -1,0 +1,42 @@
+[{
+    "inputs": [{
+        "components": [{
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+        }, {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+        }, {
+            "internalType": "uint256",
+            "name": "duration",
+            "type": "uint256"
+        }, {
+            "internalType": "address",
+            "name": "resolver",
+            "type": "address"
+        }, {
+            "internalType": "bytes[]",
+            "name": "data",
+            "type": "bytes[]"
+        }, {
+            "internalType": "bool",
+            "name": "reverseRecord",
+            "type": "bool"
+        }],
+        "internalType":
+        "struct RegistrarController.RegisterRequest",
+        "name":
+        "request",
+        "type":
+        "tuple"
+    }],
+    "name":
+    "register",
+    "outputs": [],
+    "stateMutability":
+    "payable",
+    "type":
+    "function"
+}]

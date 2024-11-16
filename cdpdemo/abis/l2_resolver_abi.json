@@ -1,0 +1,35 @@
+[{
+    "inputs": [{
+        "internalType": "bytes32",
+        "name": "node",
+        "type": "bytes32"
+    }, {
+        "internalType": "address",
+        "name": "a",
+        "type": "address"
+    }],
+    "name":
+    "setAddr",
+    "outputs": [],
+    "stateMutability":
+    "nonpayable",
+    "type":
+    "function"
+}, {
+    "inputs": [{
+        "internalType": "bytes32",
+        "name": "node",
+        "type": "bytes32"
+    }, {
+        "internalType": "string",
+        "name": "newName",
+        "type": "string"
+    }],
+    "name":
+    "setName",
+    "outputs": [],
+    "stateMutability":
+    "nonpayable",
+    "type":
+    "function"
+}]
