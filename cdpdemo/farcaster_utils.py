@@ -6,6 +6,7 @@ import requests
 import uuid
 
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 
@@ -119,12 +120,12 @@ class FarcasterBot:
             result = [
                 {
                     'timestamp': notification['cast']['timestamp'],
-                    # 'thread_hash': notification['cast']['thread_hash'],
                     'hash': notification['cast']['hash'],
                     'text': notification['cast']['text'],
                     'author': notification['cast']['author']['username'],
                     'type': notification['type'],
-                    
+                    'seen': notification['seen'],
+                    'age_in_sec': (datetime.utcnow() - datetime.strptime(notification['cast']['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ")).total_seconds()
                 }
                 for notification in notifications
                 if notification.get('type') in ['reply', 'mention'] and 'cast' in notification
@@ -136,6 +137,23 @@ class FarcasterBot:
             return f"Error getting notifications: {str(e)}"
 
 
+    def mark_notifications_as_seen(self) -> str:
+        """
+        Mark a notification as seen
+        
+            
+        Returns:
+            str: Status message about the action
+        """
+
+        try:
+            url = self.v2_url + "notifications/seen"
+            payload = os.getenv("NAYNAR_SIGNER_UUID")
+            response = requests.post(url, json=payload, headers=self.headers)
+            print(response.text)
+            return f"Successfully marked notifications as seen {response}"
+        except Exception as e:
+            return f"Error marking notification as seen: {str(e)}"
 
     # def reply_to_cast(self, cast_id: str, content: str) -> str:
     #     """

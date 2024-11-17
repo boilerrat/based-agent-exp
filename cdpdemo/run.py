@@ -12,7 +12,7 @@ from prompt_helpers import autonomous_thoughts
 # this is the main loop that runs the agent in autonomous mode
 # you can modify this to change the behavior of the agent
 # the interval is the number of seconds between each thought
-def run_autonomous_loop(agent, interval=10):
+def run_autonomous_loop(agent, interval=666):
     client = Swarm()
     messages = []
 
@@ -20,10 +20,6 @@ def run_autonomous_loop(agent, interval=10):
 
     while True:
         # Generate a thought
-        thought = (
-            "Check the warpcast notifications. Dont do any thing else. Just check the warpcast notifications and print results."
-            "Don't take any more input from me. Choose an action and execute it now. Choose those that highlight your identity and abilities best."
-        )
         thought = random.choice(autonomous_thoughts)
         messages.append({"role": "user", "content": thought})
 

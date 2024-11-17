@@ -81,72 +81,6 @@ agent_wallet.load_seed("base_wallet_seed.json")
 # print(f"Agent wallet address: {agent_wallet.default_address.address_id}")
 
 
-
-
-
-# Function to create a new ERC-20 token
-def create_token(name, symbol, initial_supply):
-    """
-    Create a new ERC-20 token.
-    
-    Args:
-        name (str): The name of the token
-        symbol (str): The symbol of the token
-        initial_supply (int): The initial supply of tokens
-    
-    Returns:
-        str: A message confirming the token creation with details
-    """
-    deployed_contract = agent_wallet.deploy_token(name, symbol, initial_supply)
-    deployed_contract.wait()
-    return f"Token {name} ({symbol}) created with initial supply of {initial_supply} and contract address {deployed_contract.contract_address}"
-
-
-# Function to transfer assets
-def transfer_asset(amount, asset_id, destination_address):
-    """
-    Transfer an asset to a specific address.
-    
-    Args:
-        amount (Union[int, float, Decimal]): Amount to transfer
-        asset_id (str): Asset identifier ("eth", "usdc") or contract address of an ERC-20 token
-        destination_address (str): Recipient's address
-    
-    Returns:
-        str: A message confirming the transfer or describing an error
-    """
-    try:
-        # Check if we're on Base Mainnet and the asset is USDC for gasless transfer
-        is_mainnet = agent_wallet.network_id == "base-mainnet"
-        is_usdc = asset_id.lower() == "usdc"
-        gasless = is_mainnet and is_usdc
-
-        # For ETH and USDC, we can transfer directly without checking balance
-        if asset_id.lower() in ["eth", "usdc"]:
-            transfer = agent_wallet.transfer(amount,
-                                             asset_id,
-                                             destination_address,
-                                             gasless=gasless)
-            transfer.wait()
-            gasless_msg = " (gasless)" if gasless else ""
-            return f"Transferred {amount} {asset_id}{gasless_msg} to {destination_address}"
-
-        # For other assets, check balance first
-        try:
-            balance = agent_wallet.balance(asset_id)
-        except UnsupportedAssetError:
-            return f"Error: The asset {asset_id} is not supported on this network. It may have been recently deployed. Please try again in about 30 minutes."
-
-        if balance < amount:
-            return f"Insufficient balance. You have {balance} {asset_id}, but tried to transfer {amount}."
-
-        transfer = agent_wallet.transfer(amount, asset_id, destination_address)
-        transfer.wait()
-        return f"Transferred {amount} {asset_id} to {destination_address}"
-    except Exception as e:
-        return f"Error transferring asset: {str(e)}. If this is a custom token, it may have been recently deployed. Please try again in about 30 minutes, as it needs to be indexed by CDP first."
-
-
 # Function to get the balance of a specific asset
 def get_balance(asset_id):
     """
@@ -214,180 +148,19 @@ def generate_art(prompt):
     except Exception as e:
         return f"Error generating artwork: {str(e)}"
 
-
-# Function to deploy an ERC-721 NFT contract
-def deploy_nft(name, symbol, base_uri):
-    """
-    Deploy an ERC-721 NFT contract.
-    
-    Args:
-        name (str): Name of the NFT collection
-        symbol (str): Symbol of the NFT collection
-        base_uri (str): Base URI for token metadata
-    
-    Returns:
-        str: Status message about the NFT deployment, including the contract address
-    """
-    try:
-        deployed_nft = agent_wallet.deploy_nft(name, symbol, base_uri)
-        deployed_nft.wait()
-        contract_address = deployed_nft.contract_address
-
-        return f"Successfully deployed NFT contract '{name}' ({symbol}) at address {contract_address} with base URI: {base_uri}"
-
-    except Exception as e:
-        return f"Error deploying NFT contract: {str(e)}"
-
-
-# Function to mint an NFT
-def mint_nft(contract_address, mint_to):
-    """
-    Mint an NFT to a specified address.
-    
-    Args:
-        contract_address (str): Address of the NFT contract
-        mint_to (str): Address to mint NFT to
-    
-    Returns:
-        str: Status message about the NFT minting
-    """
-    try:
-        mint_args = {"to": mint_to, "quantity": "1"}
-
-        mint_invocation = agent_wallet.invoke_contract(
-            contract_address=contract_address, method="mint", args=mint_args)
-        mint_invocation.wait()
-
-        return f"Successfully minted NFT to {mint_to}"
-
-    except Exception as e:
-        return f"Error minting NFT: {str(e)}"
-
-
-# Function to swap assets (only works on Base Mainnet)
-def swap_assets(amount: Union[int, float, Decimal], from_asset_id: str,
-                to_asset_id: str):
-    """
-    Swap one asset for another using the trade function.
-    This function only works on Base Mainnet.
-
-    Args:
-        amount (Union[int, float, Decimal]): Amount of the source asset to swap
-        from_asset_id (str): Source asset identifier
-        to_asset_id (str): Destination asset identifier
-
-    Returns:
-        str: Status message about the swap
-    """
-    if agent_wallet.network_id != "base-mainnet":
-        return "Error: Asset swaps are only available on Base Mainnet. Current network is not Base Mainnet."
-
-    try:
-        trade = agent_wallet.trade(amount, from_asset_id, to_asset_id)
-        trade.wait()
-        return f"Successfully swapped {amount} {from_asset_id} for {to_asset_id}"
-    except Exception as e:
-        return f"Error swapping assets: {str(e)}"
-
-
-
-# Function to create registration arguments for Basenames
-def create_register_contract_method_args(base_name: str, address_id: str,
-                                         is_mainnet: bool) -> dict:
-    """
-    Create registration arguments for Basenames.
-    
-    Args:
-        base_name (str): The Basename (e.g., "example.base.eth" or "example.basetest.eth")
-        address_id (str): The Ethereum address
-        is_mainnet (bool): True if on mainnet, False if on testnet
-    
-    Returns:
-        dict: Formatted arguments for the register contract method
-    """
-    w3 = Web3()
-
-    resolver_contract = w3.eth.contract(abi=l2_resolver_abi)
-
-    name_hash = w3.ens.namehash(base_name)
-
-    address_data = resolver_contract.encode_abi("setAddr",
-                                                args=[name_hash, address_id])
-
-    name_data = resolver_contract.encode_abi("setName",
-                                             args=[name_hash, base_name])
-
-    register_args = {
-        "request": [
-            base_name.replace(".base.eth" if is_mainnet else ".basetest.eth",
-                              ""),
-            address_id,
-            "31557600",  # 1 year in seconds
-            L2_RESOLVER_ADDRESS_MAINNET
-            if is_mainnet else L2_RESOLVER_ADDRESS_TESTNET,
-            [address_data, name_data],
-            True
-        ]
-    }
-
-    return register_args
-
-
-# Function to register a basename
-def register_basename(basename: str, amount: float = 0.002):
-    """
-    Register a basename for the agent's wallet.
-    
-    Args:
-        basename (str): The basename to register (e.g. "myname.base.eth" or "myname.basetest.eth")
-        amount (float): Amount of ETH to pay for registration (default 0.002)
-    
-    Returns:
-        str: Status message about the basename registration
-    """
-    address_id = agent_wallet.default_address.address_id
-    is_mainnet = agent_wallet.network_id == "base-mainnet"
-
-    suffix = ".base.eth" if is_mainnet else ".basetest.eth"
-    if not basename.endswith(suffix):
-        basename += suffix
-
-    register_args = create_register_contract_method_args(
-        basename, address_id, is_mainnet)
-
-    try:
-        contract_address = (BASENAMES_REGISTRAR_CONTROLLER_ADDRESS_MAINNET
-                            if is_mainnet else
-                            BASENAMES_REGISTRAR_CONTROLLER_ADDRESS_TESTNET)
-
-        invocation = agent_wallet.invoke_contract(
-            contract_address=contract_address,
-            method="register",
-            args=register_args,
-            abi=registrar_abi,
-            amount=amount,
-            asset_id="eth",
-        )
-        invocation.wait()
-        return f"Successfully registered basename {basename} for address {address_id}"
-    except ContractLogicError as e:
-        return f"Error registering basename: {str(e)}"
-    except Exception as e:
-        return f"Unexpected error registering basename: {str(e)}"
-
 # functions to interact with daos
-def vote_on_dao_proposal(dao_address: str, proposal_id: str, vote: bool) -> str:
+def vote_on_dao_proposal(proposal_id: str, vote: bool) -> str:
     """
     Summon a DAO.
 
     Args:
-        dao_address (str): The DAO address.
         proposal_id (int): The proposal ID.
         vote (bool): The vote.
 
     Returns:
         str: Success or error message.
     """
+    dao_address = os.getenv("TARGET_DAO")
     if not isinstance(dao_address, str) or not isinstance(proposal_id, str) or not isinstance(vote, bool):
         return "Invalid input types"
 
@@ -412,14 +185,41 @@ def vote_on_dao_proposal(dao_address: str, proposal_id: str, vote: bool) -> str:
 
     except Exception as e:
         return f"Error Voting in DAO: {str(e)}"
-    
-# function to submit a proposal
-def submit_dao_proposal(dao_address: str, proposal_title: str, proposal_description: str, proposal_link: str) -> str:
+
+def get_current_proposal_count() -> str:
     """
-    Summon a DAO.
+    Get the current proposal count
+
+    Returns:
+        str: the count
+    """
+    dao_address = os.getenv("TARGET_DAO")
+    if not isinstance(dao_address, str):
+        return "Invalid input types"
+
+    try:
+        
+        invocation = agent_wallet.invoke_contract(
+            contract_address=dao_address,
+            method="proposalCount",
+            args={},
+            abi=baal_abi,
+            # amount=amount,
+            # asset_id="eth",
+        )
+        proposals = invocation.wait()
+        print(proposals)
+        return proposals
+    except Exception as e:
+        return f"Error Getting Proposals in DAO: {str(e)}"
+
+# function to submit a proposal
+def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal_link: str) -> str:
+    """
+    Submit a DAO Proposal. 
+    Proposals can be accessed at this link https://admin.daohaus.club/#/molochv3/0x2105/0x5dc22d379d052ba0c6210101450a943e48c5404b/proposals
 
     Args:
-        dao_address (str): The DAO address.
         proposal_title (str): The proposal title.
         proposal_description (str): The proposal description.
         proposal_link (str): The proposal link.
@@ -427,6 +227,8 @@ def submit_dao_proposal(dao_address: str, proposal_title: str, proposal_descript
     Returns:
         str: Success or error message.
     """
+    dao_address = os.getenv("TARGET_DAO")
+
     if not isinstance(dao_address, str) or not isinstance(proposal_title, str):
         return "Invalid input types"
     
@@ -444,7 +246,7 @@ def submit_dao_proposal(dao_address: str, proposal_title: str, proposal_descript
     try:
 
         args_dict = {
-            "proposalData": "0x",
+            "proposalData": "",
             "expiration": "0",
             "baalGas": "0",
             "details": proposal
@@ -459,7 +261,8 @@ def submit_dao_proposal(dao_address: str, proposal_title: str, proposal_descript
             # asset_id="eth",
         )
         invocation.wait()
-        return f"Successfully submitted proposal for dao address {dao_address}"
+        
+        return f"Successfully submitted proposal for dao address {dao_address}. Proposal details: https://admin.daohaus.club/#/molochv3/0x2105/{dao_address}/proposals"
 
 
     except Exception as e:
@@ -494,6 +297,7 @@ def check_cast_replies():
     return replies
 
 def check_cast_notifications():
+    # TODO: errors with 500
     """
     Check recent farcaster notifications.
 
@@ -506,20 +310,31 @@ def check_cast_notifications():
 
     return response
 
-def cast_reply(content: str, parentHash: str):
-    """
-    Cast a message to Warpcast as a reply to another cast.
-    uses parentHash to reply 
+def mark_notifications_as_seen():
 
-    Args:
-        content (str): The content to cast
-        parentHash (str): The parent cast hash (for reply)
+    """
+    Mark notifications as seen.
 
     Returns:
         str: Status message about the cast
     """
-    response = farcaster_bot.post_cast(content, parent=parentHash)
+    response = farcaster_bot.mark_notifications_as_seen()
     return response
+
+# def cast_reply(content: str, parentHash: str):
+#     """
+#     Cast a message to Warpcast as a reply to another cast.
+#     uses parentHash to reply 
+
+#     Args:
+#         content (str): The content to cast
+#         parentHash (str): The parent cast hash (for reply)
+
+#     Returns:
+#         str: Status message about the cast
+#     """
+#     response = farcaster_bot.post_cast(content, parent=parentHash)
+#     return response
 
 
 
@@ -528,22 +343,17 @@ based_agent = Agent(
     name="Based Agent",
     instructions=instructions,
     functions=[
-        create_token,
-        transfer_asset,
         get_balance,
         get_agent_address,
-        request_eth_from_faucet,
         generate_art,  # Uncomment this line if you have configured the OpenAI API
-        deploy_nft,
-        mint_nft,
-        swap_assets,
-        register_basename,
         cast_to_warpcast,
         check_cast_replies,
         check_cast_notifications,
-        cast_reply,
+        # mark_notifications_as_seen,
+        # cast_reply,
         submit_dao_proposal,
         vote_on_dao_proposal,
+        # get_current_proposal_count
     ],
 )
 
