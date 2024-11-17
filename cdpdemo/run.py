@@ -1,9 +1,12 @@
 import time
 import json
+import random
 from swarm import Swarm
 from swarm.repl import run_demo_loop
 from agents import based_agent
 from openai import OpenAI
+
+from prompt_helpers import autonomous_thoughts
 
 
 # this is the main loop that runs the agent in autonomous mode
@@ -18,9 +21,10 @@ def run_autonomous_loop(agent, interval=10):
     while True:
         # Generate a thought
         thought = (
-            "Be creative and do something interesting on the Base blockchain. "
+            "Check the warpcast notifications. Dont do any thing else. Just check the warpcast notifications and print results."
             "Don't take any more input from me. Choose an action and execute it now. Choose those that highlight your identity and abilities best."
         )
+        thought = random.choice(autonomous_thoughts)
         messages.append({"role": "user", "content": thought})
 
         print(f"\n\033[90mAgent's Thought:\033[0m {thought}")
