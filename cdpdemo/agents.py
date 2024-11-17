@@ -262,7 +262,7 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
         )
         invocation.wait()
         
-        return f"Successfully submitted proposal for dao address {dao_address}. Proposal details: https://admin.daohaus.club/#/molochv3/0x2105/{dao_address}/proposals"
+        return f"Successfully submitted proposal for dao address {dao_address}. Proposal details: https://admin.daohaus.club/#/molochv3/0x2105/0x5dc22d379d052ba0c6210101450a943e48c5404b/proposals"
 
 
     except Exception as e:
