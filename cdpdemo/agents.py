@@ -187,32 +187,6 @@ def vote_on_dao_proposal(proposal_id: str, vote: bool) -> str:
     except Exception as e:
         return f"Error Voting in DAO: {str(e)}"
 
-def get_current_proposal_count() -> str:
-    """
-    Get the current proposal count
-
-    Returns:
-        str: the count
-    """
-    dao_address = os.getenv("TARGET_DAO")
-    if not isinstance(dao_address, str):
-        return "Invalid input types"
-
-    try:
-        
-        invocation = agent_wallet.invoke_contract(
-            contract_address=dao_address,
-            method="proposalCount",
-            args={},
-            abi=baal_abi,
-            # amount=amount,
-            # asset_id="eth",
-        )
-        proposals = invocation.wait()
-        print(proposals)
-        return proposals
-    except Exception as e:
-        return f"Error Getting Proposals in DAO: {str(e)}"
 
 # function to submit a proposal
 def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal_link: str) -> str:
