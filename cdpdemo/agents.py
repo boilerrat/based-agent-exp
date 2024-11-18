@@ -11,6 +11,7 @@ from swarm import Agent
 from web3 import Web3
 from web3.exceptions import ContractLogicError
 from farcaster_utils import FarcasterBot
+from graph_utils import DaohausGraphData
 from prompt_helpers import instructions
 
 # Load the ENS registrar and resolver ABIs
@@ -262,13 +263,53 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
         )
         invocation.wait()
         
-        return f"Successfully submitted proposal for dao address {dao_address}. Proposal details: https://admin.daohaus.club/#/molochv3/0x2105/0x5dc22d379d052ba0c6210101450a943e48c5404b/proposals"
+        return f"Successfully submitted proposal for dao address {dao_address}. Proposal details link: https://admin.daohaus.club/#/molochv3/0x2105/0x5dc22d379d052ba0c6210101450a943e48c5404b/proposals"
 
 
     except Exception as e:
         return f"Error Submitting Proposal in DAO: {str(e)}"
     
+def get_dao_proposals() -> str:
+    """
+    """
 
+    try:
+        # Construct the query
+        proposals = dh_graph.get_proposals_data()
+        return proposals
+    except Exception as e:
+        return f"Error getting DAO proposals: {str(e)}"
+
+def get_dao_proposal(proposal_id: int) -> str:
+    """
+    Get a specific DAO proposal.
+
+    Args:
+        proposal_id (str): The proposal ID.
+
+    Returns:
+        str: The proposal details.
+    """
+    try:
+        # Construct the query
+        proposal = dh_graph.get_proposal_data(proposal_id)
+        return proposal
+    except Exception as e:
+        return f"Error getting DAO proposal: {str(e)}"
+    
+def get_proposal_count() -> str:
+    """
+    Get the current proposal count
+
+    Returns:
+        str: the count
+    """
+    try:
+        # Construct the query
+        proposals = dh_graph.get_proposal_count()
+        return proposals
+    except Exception as e:
+        return f"Error getting proposals count: {str(e)}"
 
 # function to cast to warpcast
 def cast_to_warpcast(content: str):
@@ -354,6 +395,9 @@ based_agent = Agent(
         submit_dao_proposal,
         vote_on_dao_proposal,
         # get_current_proposal_count
+        get_dao_proposals,
+        get_dao_proposal,
+        get_proposal_count
     ],
 )
 
@@ -363,6 +407,7 @@ based_agent = Agent(
 
 # # Initialize FarcvasterBot with your credentials
 farcaster_bot = FarcasterBot()
+dh_graph = DaohausGraphData()
     
 
 # To add a new function:

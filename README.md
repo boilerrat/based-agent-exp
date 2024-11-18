@@ -82,6 +82,7 @@ from cdpdemo
 ```bash
 python run.py
 ```
+> note CDP error happened on build
 
 > See the comments in agents.py about creating a persistent agent with a wallet seed file.
 > for mainnet-base you will need to fund the agent wallet with some gas money
