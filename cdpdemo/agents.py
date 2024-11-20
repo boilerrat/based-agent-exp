@@ -12,7 +12,6 @@ from web3 import Web3
 from web3.exceptions import ContractLogicError
 from farcaster_utils import FarcasterBot
 from graph_utils import DaohausGraphData
-from prompt_helpers import instructions
 
 # Load the ENS registrar and resolver ABIs
 with open("abis/registrar_abi.json", "r") as abi_file:
@@ -456,7 +455,11 @@ def check_user_profile(fid: str):
     return response
 
 # Create the Based Agent with all available functions
-based_agent = Agent(
+
+print("Creating Based Agent...")
+
+def based_agent(instructions: str ): 
+    return Agent(
     name="Based Agent",
     instructions=instructions,
     functions=[
