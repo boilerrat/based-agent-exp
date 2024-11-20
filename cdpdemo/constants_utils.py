@@ -4,6 +4,10 @@ L2_RESOLVER_ADDRESS_MAINNET = "0xC6d566A56A1aFf6508b41f6c90ff131615583BCD"
 L2_RESOLVER_ADDRESS_TESTNET = "0x6533C94869D28fAA8dF77cc63f9e2b2D6Cf77eBA"
 
 SUMMON_CONTRACTS = {
+    "HIGHER_HOS_SUMMONER": {
+        "0xaa36a7": "",  
+        "0x2105": "0x4050E747Ed393e1Fd89783662C48373421fD0647"  
+    },
     "YEET24_SUMMONER": {
         "0xaa36a7": "0xde65e8b424438b361d8f4a8896f92956510b08dc",  # "0x78cf150b2E684562C0510C0b699edE1DCD69b983"
         "0x2105": "0xe6eB99FaB27bE81D5F5F4dC44fCdf508a1B97Cd3"  # "0x788C55D87a416F391E93a986AbB1e2b2960d0079"
@@ -60,16 +64,17 @@ DEFAULT_MEME_YEETER_VALUES = {
   "boostRewardFees": 90000,
 }
 MEME_SHAMAN_PERMISSIONS = 3
+YEET_SHAMAN_PERMISSIONS = 2
 
 DEFAULT_YEETER_VALUES = {
     "isShares": True,
     "feeRecipients": [
         "0xD0f8720846890a7961945261FE5012E4cA39918e",
         "0x4a9a27d614a74ee5524909ca27bdbcbb7ed3b315",
-    ],  # yeeter team, daohaus eco fund
+    ],  # yeeter team, daohaus eco fund 
     "feeAmounts": [5000, 5000],  # .5% fees
     "multiplier": 10000,
-    "minThresholdGoal": 3000000000000000000,  
+    "minThresholdGoal": 1000000000000000,  # .1
     "price": 100000000000000, # .0001
 }
 
@@ -77,9 +82,9 @@ DEFAULT_SUMMON_VALUES = {
   "votingPeriodInSeconds": 259200,
   "gracePeriodInSeconds": 172800,
   "newOffering": 10000000000000000, # .1
-  "quorum": 25,
-  "sponsorThreshold": 100000000000000000000, # 100
-  "minRetention": 66,
+  "quorum": 15,
+  "sponsorThreshold": 1000000000000000000000, # 1000
+  "minRetention": 33,
   "votingTransferable": False,
   "nvTransferable": True,
 }
@@ -90,9 +95,9 @@ DEFAULT_FORM_VALUES = {
 
 DEFAULT_CHAIN_ID = "0x2105"
 
-DEFAULT_START_DATE_OFFSET = 3600
+DEFAULT_START_DATE_OFFSET = 600 # 10 minutes
 
-DEFAULT_DURATION = 3600 * 24
+DEFAULT_DURATION = 1800 # 30 minutes
 
 DEFAULT_DAO_PARAMS = {
     "NAME": "YEET DAO",

@@ -23,7 +23,7 @@ class FarcasterBot:
         }
 
         
-    def post_cast(self, content: str, parent: Optional[str] = None) -> str:
+    def post_cast(self, content: str, parent: Optional[str] = None, parent_fid: Optional[str] = None) -> str:
         """
         Post a cast
         
@@ -45,6 +45,8 @@ class FarcasterBot:
             }
             if parent:
                 payload["parent"] = parent
+            if parent_fid:
+                payload["parent_fid"] = parent_fid
             response = requests.post(url, json=payload, headers=self.headers)
 
             return f"Successfully posted cast with ID: {response.json()['cast']['hash']}"
@@ -80,6 +82,7 @@ class FarcasterBot:
                     'hash': reply['hash'],
                     'text': reply['text'],
                     'author': reply['author']['username'],
+                    'author_fid':  reply['author']['fid'],
                     
                 }
                 for reply in replies
@@ -123,6 +126,7 @@ class FarcasterBot:
                     'hash': notification['cast']['hash'],
                     'text': notification['cast']['text'],
                     'author': notification['cast']['author']['username'],
+                    'author_fid':  notification['cast']['author']['fid'],
                     'type': notification['type'],
                     'seen': notification['seen'],
                     'age_in_sec': (datetime.utcnow() - datetime.strptime(notification['cast']['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ")).total_seconds()
@@ -155,24 +159,68 @@ class FarcasterBot:
         except Exception as e:
             return f"Error marking notification as seen: {str(e)}"
 
-    # def reply_to_cast(self, cast_id: str, content: str) -> str:
-    #     """
-    #     Reply to a specific cast
-        
-    #     Args:
-    #         cast_id (str): ID of the cast to reply to
-    #         content (str): Content of the reply
-            
-    #     Returns:
-    #         str: Status message about the reply
-    #     """
-    #     try:
-    #         cast = self.client.get_cast(cast_id)
-    #         print(cast)
 
-    #         # Check if the cast exists
+    def get_casts(self, fid:str = os.getenv("FARCASTER_FID"), limit: int = 25, include_replies: bool = True) -> List[Dict]:
+        """
+        Get recent casts
+
+        Args:
+            fid (str): The fid of the user
+            limit (int): The number of casts to fetch
+            include_replies (bool): Whether to include replies in the casts
+                
+        Returns:
+            List[Dict]: List of relevant casts containing timestamp, hash, text, and author
+        """
+        viewer_fid = os.getenv("FARCASTER_FID")
+        try:
+            # Constructing the URL for fetching casts
+            url = self.v2_url + f"feed/user/casts?fid={fid}&viewer_fid={viewer_fid}&limit={limit}&include_replies={include_replies}"
+
+            response = requests.get(url, headers=self.headers)
+
+            # Ensure the response is successful
+            if response.status_code != 200:
+                return f"Error getting casts: {response.status_code} - {response.text}"
+
+            # Parse response JSON
+            response_data = response.json()
+
+            # Extract the list of casts from the response
+            casts = response_data.get('casts', [])
+
+            # Extracting details from each cast
+            result = [
+                {
+                    'timestamp': cast['timestamp'],
+                    'hash': cast['hash'],
+                    'text': cast['text'],
+                    'author': cast['author']['username'],
+                    'author_fid':  cast['author']['fid'],
+                }
+                for cast in casts
+            ]
+
+            return result
+
+        except Exception as e:
+            return f"Error getting casts: {str(e)}"
+
+
+    def get_user_by_username(self, username: str) -> Dict:
+        """
+        Get user information by username
+        
+        Args:
+            username (str): The username of the user
             
-    #         # reply = self.client.post_cast(content, None, cast_id)
-    #         return f"Successfully replied to cast {cast_id}"
-    #     except Exception as e:
-    #         return f"Error replying to cast: {str(e)}"
+        Returns:
+            Dict: User information
+        """
+        try:
+            url = self.v2_url + f"user/by_username?username={username}&viewer_fid={os.getenv('FARCASTER_FID')}"
+            response = requests.get(url, headers=self.headers)
+
+            return response.json()
+        except Exception as e:
+            return f"Error getting user by username: {str(e)}"

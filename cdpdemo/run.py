@@ -6,13 +6,14 @@ from swarm.repl import run_demo_loop
 from agents import based_agent
 from openai import OpenAI
 
-from prompt_helpers import autonomous_thoughts
+from prompt_helpers import pre_autonomous_thought, autonomous_thoughts, post_autonomous_thought
+from interval_utils import get_interval, set_random_interval
 
+interval = 1800
 
 # this is the main loop that runs the agent in autonomous mode
 # you can modify this to change the behavior of the agent
-# the interval is the number of seconds between each thought
-def run_autonomous_loop(agent, interval=1800):
+def run_autonomous_loop(agent):
     client = Swarm()
     messages = []
 
@@ -20,7 +21,13 @@ def run_autonomous_loop(agent, interval=1800):
 
     while True:
         # Generate a thought
-        thought = random.choice(autonomous_thoughts)
+        thought = random.choices(
+            population=[thought['text'] for thought in autonomous_thoughts],
+            weights=[thought['weight'] for thought in autonomous_thoughts],
+            k=1
+        )[0]
+        thought = f"{pre_autonomous_thought} {thought} {post_autonomous_thought}"
+
         messages.append({"role": "user", "content": thought})
 
         print(f"\n\033[90mAgent's Thought:\033[0m {thought}")
@@ -34,8 +41,12 @@ def run_autonomous_loop(agent, interval=1800):
         # Update messages with the new response
         messages.extend(response_obj.messages)
 
+        # Set a random interval between 600 and 3600 seconds
+        set_random_interval(600, 3600)
+
+        print(f"\n\033[90mNext thought in {get_interval()} seconds...\033[0m")
         # Wait for the specified interval
-        time.sleep(interval)
+        time.sleep(get_interval())
 
 
 # this is the main loop that runs the agent in two-agent mode

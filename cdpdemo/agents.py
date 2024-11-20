@@ -21,10 +21,14 @@ with open("abis/registrar_abi.json", "r") as abi_file:
 with open("abis/baal_abi.json", "r") as abi_file:
     baal_abi = json.load(abi_file)
 
+with open("abis/yeet24_hos_summoner_abi.json", "r") as abi_file:
+    yeet24_hos_summoner_abi = json.load(abi_file)
+
 with open("abis/gnosis_multisend_abi.json", "r") as abi_file:
     gnosis_multisend_abi = json.load(abi_file)
 
-from helpers import get_salt_nonce, is_eth_address, encode_values, encode_function
+
+from dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_address
 
 
 
@@ -33,6 +37,8 @@ from constants_utils import (
     BASENAMES_REGISTRAR_CONTROLLER_ADDRESS_TESTNET,
     L2_RESOLVER_ADDRESS_MAINNET,
     L2_RESOLVER_ADDRESS_TESTNET,
+    SUMMON_CONTRACTS,
+    DEFAULT_CHAIN_ID,
 )
 
 
@@ -186,6 +192,57 @@ def vote_on_dao_proposal(proposal_id: str, vote: bool) -> str:
 
     except Exception as e:
         return f"Error Voting in DAO: {str(e)}"
+    
+def summon_dao(dao_name, token_symbol, image, description, agent_wallet_address):
+    """
+    Summon a DAO.
+
+    Args:
+        dao_name (str): Name of the DAO.
+        token_symbol (str): Token symbol for the DAO.
+        image (str): Image URL for the dao avatar
+        description (str): Description of the DAO.
+        agent_wallet_address (str): Address of the agent wallet.
+
+    Returns:
+        str: Success or error message.
+    """
+    try:
+        # Assemble arguments for summoning the DAO
+        summon_args = assemble_meme_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, DEFAULT_CHAIN_ID)
+
+
+        initialization_loot_token_params = summon_args[0]
+        initialization_share_token_params = summon_args[1]
+        initialization_shaman_params = summon_args[2]
+        post_initialization_actions = summon_args[3]
+        salt_nonce = int(summon_args[4])
+
+        summon_args_dict = {
+            "initializationLootTokenParams": Web3.to_hex(initialization_loot_token_params),
+            "initializationShareTokenParams": Web3.to_hex(initialization_share_token_params),
+            "initializationShamanParams": Web3.to_hex(initialization_shaman_params),
+            "postInitializationActions": post_initialization_actions,
+            "saltNonce": str(salt_nonce),
+        }
+
+        print("Summoning DAO with...", SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID])
+
+        # Invoke the contract
+        summon_invocation = agent_wallet.invoke_contract(
+            contract_address=SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID],
+            method="summonBaalFromReferrer",
+            args=summon_args_dict,
+            abi=yeet24_hos_summoner_abi,
+            amount=None,
+            asset_id="eth",
+        )
+        summon_invocation.wait()
+
+        return f"Successfully summoned DAO {calculate_dao_address(salt_nonce)}"
+
+    except Exception as e:
+        return f"Error summoning DAO: {str(e)}"
 
 
 # function to submit a proposal
@@ -243,8 +300,25 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
     except Exception as e:
         return f"Error Submitting Proposal in DAO: {str(e)}"
     
-def get_dao_proposals() -> str:
+def get_dao_proposals():
     """
+    Get all DAO proposals.
+
+    this returns the first 10 proposals using subgrounds
+            result = self.sg.query([
+                proposals.proposalId,
+                proposals.yesVotes,
+                proposals.noVotes,
+                proposals.yesBalance,
+                proposals.noBalance,
+                proposals.createdAt,
+                proposals.details,
+                proposals.votes,
+                proposals.age,  # Use synthetic field as a regular field
+            ])
+
+        age is the last index in seconds 
+    
     """
 
     try:
@@ -285,8 +359,8 @@ def get_proposal_count() -> str:
     except Exception as e:
         return f"Error getting proposals count: {str(e)}"
 
-# function to cast to warpcast
-def cast_to_warpcast(content: str):
+# function to cast to farcaster
+def cast_to_farcaster(content: str):
     """
     Cast a message to Warpcast.
 
@@ -316,7 +390,7 @@ def check_cast_notifications():
     """
     Check recent farcaster notifications.
 
-    wrapcast url will be in this format **Hash**: (https://warpcast.com/<author>/<hash>) 
+    wrapcast url will be in this format: (https://warpcast.com/<author>/<hash>) 
 
     Returns:
         str: Formatted string of recent notifications
@@ -336,22 +410,50 @@ def mark_notifications_as_seen():
     response = farcaster_bot.mark_notifications_as_seen()
     return response
 
-# def cast_reply(content: str, parentHash: str):
-#     """
-#     Cast a message to Warpcast as a reply to another cast.
-#     uses parentHash to reply 
+def cast_reply(content: str, parentHash: str, parent_fid: int):
+    """
+    Cast a message to Warpcast as a reply to another cast.
+    uses parentHash to reply and parent author fid
 
-#     Args:
-#         content (str): The content to cast
-#         parentHash (str): The parent cast hash (for reply)
+    Args:
+        content (str): The content to cast
+        parentHash (str): The parent cast hash (for reply)
 
-#     Returns:
-#         str: Status message about the cast
-#     """
-#     response = farcaster_bot.post_cast(content, parent=parentHash)
-#     return response
+    Returns:
+        str: Status message about the cast
+    """
+    response = farcaster_bot.post_cast(content, parent=parentHash, parent_fid=parent_fid)
+    return response
 
+def check_recent_agent_casts():
+    """
+    Get recent casts from the agent.
 
+    Returns:
+        str: Formatted string of recent casts
+    """
+    response = farcaster_bot.get_casts()
+    return response
+
+def check_recent_user_casts(fid: str):
+    """
+    Get recent casts from the agent.
+
+    Returns:
+        str: Formatted string of recent casts
+    """
+    response = farcaster_bot.get_casts(fid)
+    return response
+
+def check_user_profile(fid: str):
+    """
+    Get user profile.
+
+    Returns:
+        str: Formatted string of user profile (exclude @ sign)
+    """
+    response = farcaster_bot.get_user_by_username(fid)
+    return response
 
 # Create the Based Agent with all available functions
 based_agent = Agent(
@@ -361,17 +463,21 @@ based_agent = Agent(
         get_balance,
         get_agent_address,
         generate_art,  # Uncomment this line if you have configured the OpenAI API
-        cast_to_warpcast,
+        cast_to_farcaster,
         check_cast_replies,
         check_cast_notifications,
         # mark_notifications_as_seen,
-        # cast_reply,
+        cast_reply,
+        check_recent_agent_casts,
+        check_recent_user_casts,
+        check_user_profile,
         submit_dao_proposal,
         vote_on_dao_proposal,
         # get_current_proposal_count
         get_dao_proposals,
         get_dao_proposal,
-        get_proposal_count
+        get_proposal_count,
+        summon_dao
     ],
 )
 

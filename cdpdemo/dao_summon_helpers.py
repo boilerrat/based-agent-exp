@@ -3,6 +3,7 @@ import random
 import json
 import time
 
+
 from web3 import Web3
 from web3.exceptions import ContractLogicError
 
@@ -44,11 +45,13 @@ from constants_utils import (
     DEFAULT_DURATION,
     DEFAULT_MEME_YEETER_VALUES,
     MEME_SHAMAN_PERMISSIONS,
+    YEET_SHAMAN_PERMISSIONS,
     DEFAULT_YEETER_VALUES,
     DEFAULT_SUMMON_VALUES,
 )
 
 # internal summon helper functions
+    
 
 def assemble_meme_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, chain_id = DEFAULT_CHAIN_ID):
     """
@@ -67,6 +70,8 @@ def assemble_meme_summoner_args(dao_name, token_symbol, image, description, agen
         list: Transaction arguments to be used in the contract call.
     """
 
+
+
     # get salt nonce
     salt_nonce = get_salt_nonce()
 
@@ -75,12 +80,19 @@ def assemble_meme_summoner_args(dao_name, token_symbol, image, description, agen
 
     price = DEFAULT_YEETER_VALUES["price"]
     multiplier = DEFAULT_YEETER_VALUES["multiplier"]
-    calculated_shaman_address = calculate_meme_shaman_address(salt_nonce)
     start_date = int(time.time()) + DEFAULT_START_DATE_OFFSET
     
 
     calculated_dao_address = calculate_dao_address(salt_nonce)
     calculated_treasury_address = calculate_create_proxy_with_nonce_address(salt_nonce)
+
+    mm_shaman_data = assemble_mm_shaman_params(start_date)
+    mm_shaman_singleton = mm_shaman_data["shamanSingleton"]
+    mm_shaman_permission = mm_shaman_data["shamanPermission"]
+    mm_shaman_params = mm_shaman_data["shamanInitParams"]
+    mm_salt_nonce = generate_shaman_salt_nonce(calculated_dao_address, 0, mm_shaman_params, salt_nonce, mm_shaman_permission, mm_shaman_singleton)
+
+    calculated_shaman_address = calculate_meme_shaman_address(mm_salt_nonce)
 
     # Assemble the initialization parameters
     initialization_loot_token_params = assemble_token_params(
@@ -114,14 +126,6 @@ def assemble_meme_summoner_args(dao_name, token_symbol, image, description, agen
         salt_nonce,
     )
 
-    print(
-        ">>>>> summon args",
-        initialization_loot_token_params,
-        initialization_share_token_params,
-        initialization_shaman_params,
-        post_initialization_actions,
-    )
-
     tx_args = [
         initialization_loot_token_params,
         initialization_share_token_params,
@@ -130,7 +134,6 @@ def assemble_meme_summoner_args(dao_name, token_symbol, image, description, agen
         salt_nonce,
     ]
 
-    print("txArgs", tx_args)
 
     return tx_args
 
@@ -158,8 +161,6 @@ def governance_config_tx(default_values):
     if not all(map(is_numberish, [voting_period_in_seconds, grace_period_in_seconds, new_offering, quorum, sponsor_threshold, min_retention])):
         raise ValueError("governanceConfigTX received arguments in the wrong shape or type")
 
-    print("defaultValues", default_values)
-
     encoded_values = encode_abi(
         ["uint32", "uint32", "uint256", "uint256", "uint256", "uint256"],
         [
@@ -171,7 +172,6 @@ def governance_config_tx(default_values):
             min_retention,
         ]
     )
-    print("encodedValues", encoded_values)
     encoded = encode_function(baal_abi, "setGovernanceConfig", [encoded_values])
     if is_string(encoded):
         return encoded
@@ -192,8 +192,6 @@ def metadata_config_tx(image, description, calculated_dao_address, dao_name, mem
     if not isinstance(dao_name, str):
         raise ValueError("metadataTX received arguments in the wrong shape or type")
     
-    print("POSTER", poster_address)
-
     content = {
         "name": dao_name,
         "daoId": calculated_dao_address,
@@ -207,15 +205,12 @@ def metadata_config_tx(image, description, calculated_dao_address, dao_name, mem
     }
 
     metadata = encode_function(poster_abi, "post", [json.dumps(content), "daohaus.summoner.daoProfile"]) # TODO: set POSTER_TAGS
-    print("metadata", metadata)
     encoded = encode_function(baal_abi, "executeAsBaal", [poster_address, 0, Web3.to_bytes(hexstr=metadata)])
     if is_string(encoded):
         return encoded
     raise ValueError("Encoding Error")
 
 def shaman_module_config_tx(calculated_shaman_address, calculated_treasury_address, salt_nonce, chain_id):
-
-    print("calculatedShamanAddress", calculated_shaman_address, calculated_treasury_address)
 
     if not is_eth_address(calculated_shaman_address) or not is_eth_address(calculated_treasury_address):
         raise ValueError("shamanModuleConfigTX received arguments in the wrong shape or type")
@@ -235,7 +230,6 @@ def shaman_module_config_tx(calculated_shaman_address, calculated_treasury_addre
         ]
     )
     exec_tx_from_module_bytes = Web3.to_bytes(hexstr=exec_tx_from_module)
-    print("execTxFromModule", exec_tx_from_module)
     
     encoded = encode_function(baal_abi, "executeAsBaal", [calculated_treasury_address, 0, exec_tx_from_module_bytes])
     if is_string(encoded):
@@ -258,27 +252,18 @@ def assemble_token_params(dao_name: str = DEFAULT_DAO_PARAMS.get("NAME"), token_
     
     return encode_values(["address", "bytes"], [share_singleton, share_params])
 
-def assemble_meme_yeeter_shaman_params(start_date: int = int(time.time()) + DEFAULT_START_DATE_OFFSET, chain_id = DEFAULT_CHAIN_ID):
+def assemble_mm_shaman_params(start_date: int = int(time.time()) + DEFAULT_START_DATE_OFFSET, chain_id = DEFAULT_CHAIN_ID):
     
     meme_yeeter_shaman_singleton = SUMMON_CONTRACTS["YEET24_SINGLETON"].get(chain_id)
     non_fungible_position_manager = SUMMON_CONTRACTS["UNISWAP_V3_NF_POSITION_MANAGER"].get(chain_id)
     weth9 = SUMMON_CONTRACTS["WETH"].get(chain_id)
     yeet24_claim_module = SUMMON_CONTRACTS["YEET24_CLAIM_MODULE"].get(chain_id)
 
-    print("assemble_meme_yeeter_shaman_params >>>>>>????", meme_yeeter_shaman_singleton)
-    print("assemble_meme_yeeter_shaman_params >>>>>>????", non_fungible_position_manager, weth9)
-
     if not start_date:
         raise ValueError("startDate is required")
-    
-    print("assemble_meme_yeeter_shaman_params start date >>>>>>????", start_date)
+
 
     end_date_time = start_date + DEFAULT_DURATION
-
-    print("assemble_meme_yeeter_shaman_params >>>>>>????", start_date, end_date_time)
-
-
-    print("assemble_meme_yeeter_shaman_params >>>>>>????", start_date, end_date_time)
 
     if (
         not meme_yeeter_shaman_singleton or
@@ -287,12 +272,6 @@ def assemble_meme_yeeter_shaman_params(start_date: int = int(time.time()) + DEFA
         not end_date_time or
         not yeet24_claim_module
     ):
-        print(
-            "assembleMemeYeeterShamanParams ERROR:",
-            meme_yeeter_shaman_singleton,
-            non_fungible_position_manager,
-            weth9
-        )
         raise ValueError("assembleMemeYeeterShamanParams: config contracts not found")
 
     # Encoding the parameters
@@ -317,15 +296,13 @@ def assemble_meme_yeeter_shaman_params(start_date: int = int(time.time()) + DEFA
 def assemble_shaman_params(price, multiplier, member_address, calculated_shaman_address, start_date, chain_id = DEFAULT_CHAIN_ID):
     yeeter_shaman_singleton = SUMMON_CONTRACTS["YEETER_SINGLETON"].get(chain_id)
 
-    print("??????????", price, member_address, yeeter_shaman_singleton, multiplier)
 
-    meme_yeeter_shaman_data = assemble_meme_yeeter_shaman_params()
-    meme_yeeter_shaman_singleton = meme_yeeter_shaman_data["shamanSingleton"]
-    meme_yeeter_shaman_permission = meme_yeeter_shaman_data["shamanPermission"]
-    meme_yeeter_shaman_params = meme_yeeter_shaman_data["shamanInitParams"]
-    print("memeYeeterShamanData", meme_yeeter_shaman_data)
+    mm_shaman_data = assemble_mm_shaman_params(start_date)
+    mm_shaman_singleton = mm_shaman_data["shamanSingleton"]
+    mm_shaman_permission = mm_shaman_data["shamanPermission"]
+    mm_shaman_params = mm_shaman_data["shamanInitParams"]
 
-    if not yeeter_shaman_singleton or not meme_yeeter_shaman_singleton:
+    if not yeeter_shaman_singleton or not mm_shaman_singleton:
         raise ValueError("assembleShamanParams received arguments in the wrong shape or type")
 
 
@@ -364,11 +341,9 @@ def assemble_shaman_params(price, multiplier, member_address, calculated_shaman_
         ]
     )
 
-    shaman_singletons = [meme_yeeter_shaman_singleton, yeeter_shaman_singleton]
-    shaman_permissions = [meme_yeeter_shaman_permission, MEME_SHAMAN_PERMISSIONS]
-    shaman_init_params = [meme_yeeter_shaman_params, yeeter_shaman_params]
-
-    print("shaman vals", [shaman_singletons, shaman_permissions, shaman_init_params])
+    shaman_singletons = [mm_shaman_singleton, yeeter_shaman_singleton]
+    shaman_permissions = [mm_shaman_permission, YEET_SHAMAN_PERMISSIONS]
+    shaman_init_params = [mm_shaman_params, yeeter_shaman_params]
 
     return encode_abi(
         ["address[]", "uint256[]", "bytes[]"],
@@ -383,16 +358,15 @@ def generate_shaman_salt_nonce(baal_address, index, initialize_params, salt_nonc
             int(index),
             shaman_template,
             int(shaman_permissions),
-            Web3.solidityKeccak(['bytes'], [initialize_params]),
+            Web3.solidity_keccak(['bytes'], [initialize_params]),
             int(salt_nonce)
         ]
     )
-    return Web3.toHex(Web3.solidityKeccak(['bytes'], [encoded_values]))
+    return Web3.to_hex(Web3.solidity_keccak(['bytes'], [encoded_values]))
 
 def calculate_meme_shaman_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
     yeet24_singleton = SUMMON_CONTRACTS["YEET24_SINGLETON"].get(chain_id, "0x0000000000000000000000000000000000000000")
     yeet24_shaman_summoner = SUMMON_CONTRACTS["YEET24_SUMMONER"].get(chain_id, "0x0000000000000000000000000000000000000000")
-    print("yeet24 Shaman", yeet24_singleton, yeet24_shaman_summoner, chain_id)
 
     yeet24_singleton = Web3.to_checksum_address(yeet24_singleton)
     yeet24_shaman_summoner = Web3.to_checksum_address(yeet24_shaman_summoner)
@@ -407,27 +381,19 @@ def calculate_meme_shaman_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
     
     expected_shaman_address = "0x0000000000000000000000000000000000000000"
 
-    print("saltNonce calculateMemeShamanAddress", salt_nonce)
-    print("yeet24Singleton", yeet24_singleton)
-
     try:
         # Simulate the contract call to predict the deterministic Shaman address
-        print("hos", hos)
-        print("hos.functions", hos.functions)
-        print("hos.functions.predictDeterministicShamanAddress", hos.functions.predictDeterministicShamanAddress)
-        print("yeet24_singleton, salt_nonce", yeet24_singleton, salt_nonce)
-        expected_shaman_address = hos.functions.predictDeterministicShamanAddress(yeet24_singleton, int(salt_nonce)).call()
-        print("***>>>>>>>>>>>>>> expectedShamanAddress", expected_shaman_address)
+        
+        expected_shaman_address = hos.functions.predictDeterministicShamanAddress(yeet24_singleton, int(salt_nonce, 16)).call()
     except ContractLogicError as e:
         print("expectedShamanAddress error", e)
 
+    # print("expectedShamanAddress", expected_shaman_address)
     return Web3.to_checksum_address(expected_shaman_address)
 
 def calculate_dao_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
     yeet24_summoner = SUMMON_CONTRACTS["YEET24_SUMMONER"].get(chain_id, "0x0000000000000000000000000000000000000000")
     
-    print("yeet24Summoner", yeet24_summoner, chain_id)
-
     if not is_eth_address(yeet24_summoner):
         raise ValueError("Invalid address")
     
@@ -444,17 +410,12 @@ def calculate_dao_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
         print("Error calculating DAO address", e)
         expected_dao_address = "0x0000000000000000000000000000000000000000"
 
-    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>expectedDAOAddress", expected_dao_address, Web3.to_checksum_address(expected_dao_address))
-
     return Web3.to_checksum_address(expected_dao_address)
 
 def calculate_create_proxy_with_nonce_address(salt_nonce, chain_id = DEFAULT_CHAIN_ID):
     gnosis_safe_proxy_factory_address = SUMMON_CONTRACTS["GNOSIS_SAFE_PROXY_FACTORY"].get(chain_id, "0x0000000000000000000000000000000000000000")
     master_copy_address = SUMMON_CONTRACTS["GNOSIS_SAFE_MASTER_COPY"].get(chain_id)
     initializer = "0x"
-
-    print("gnosisSafeProxyFactoryAddress", gnosis_safe_proxy_factory_address, master_copy_address, chain_id)
-    print("saltNonce calculateCreateProxyWithNonceAddress", salt_nonce)
 
     if not is_eth_address(gnosis_safe_proxy_factory_address) or not is_eth_address(master_copy_address):
         raise ValueError("Invalid address")
@@ -476,7 +437,7 @@ def calculate_create_proxy_with_nonce_address(salt_nonce, chain_id = DEFAULT_CHA
             master_copy_address, initializer, int(salt_nonce)
         ).call()
     except ContractLogicError as e:
-        print("ContractLogicError", e)
+        # print("ContractLogicError", e)
         expected_safe_address = get_safe_address_from_revert_message(e)
 
     return expected_safe_address
@@ -487,7 +448,6 @@ def get_safe_address_from_revert_message(e):
         # Assuming the error message contains the reverted data with the address
         if isinstance(e.args, tuple) and len(e.args) > 1:
             data = e.args[1]  # Extract the data part of the error tuple
-            print("data", data)
             if isinstance(data, str) and len(data) >= 178:
                 return Web3.to_checksum_address(data[138:178])
     except Exception:
@@ -496,177 +456,3 @@ def get_safe_address_from_revert_message(e):
             if message.startswith("0x") and len(message) in [42, 44]:
                 return message.replace(",", "")
     return "0x0000000000000000000000000000000000000000"
-
-
-
-
-# Main entry point WIP
-# would go in agents
-
-# def summon_dao(dao_name, token_symbol, image, description, agent_wallet_address, chain_id=DEFAULT_CHAIN_ID):
-#     """
-#     Summon a DAO.
-
-#     Args:
-#         dao_name (str): Name of the DAO.
-#         token_symbol (str): Token symbol for the DAO.
-#         image (str): Image URL or path for the DAO.
-#         description (str): Description of the DAO.
-#         agent_wallet_address (str): Address of the agent wallet.
-#         chain_id (int): Blockchain network ID.
-
-#     Returns:
-#         str: Success or error message.
-#     """
-#     try:
-#         # Assemble arguments for summoning the DAO
-#         summon_args = assemble_meme_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, chain_id)
-#         print("***************", summon_args)
-
-#         # Convert summon_args[3] (bytes[]) and summon_args[4] (uint256)
-#         # summon_args[3] = [
-#         #     action.encode('utf-8') if isinstance(action, str) else action for action in summon_args[3]
-#         # ]
-#         summon_args[4] = int(summon_args[4])
-
-#         print("Processed arguments:", summon_args)
-
-#         # Export wallet data (contains seed and wallet ID)
-#         wallet_data = agent_wallet.export_data()
-#         print("Wallet data:", wallet_data)
-
-
-#         w3 = Web3(Web3.HTTPProvider(os.getenv("BASE_RPC")))
-#         w3.eth.handle_revert = True
-
-#         if not w3.is_connected():
-#             raise Exception("Web3 is not connected. Check your provider URL.")
-
-#         # Encode the function call data
-#         current_gas_price = w3.eth.gas_price
-#         print("Current gas price:", current_gas_price, w3.from_wei(current_gas_price, 'gwei')) # <1 gwei
-#         contract = w3.eth.contract(
-#             address=SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID],
-#             abi=yeet24_hos_summoner_abi,
-#         )
-#         tx_data = contract.functions.summonBaalFromReferrer(
-#             *summon_args  # Unpack arguments
-#         ).build_transaction({
-#             'chainId': DEFAULT_CHAIN_ID,
-#             # 'gas': 3000000000000000,  # Adjust as needed
-#             'gasPrice': "1", # in gwei
-#             'nonce': str(w3.eth.get_transaction_count(agent_wallet_address)),
-#         })
-
-
-#         current_gas_price = w3.eth.gas_price
-#         estimated_gas = w3.eth.estimate_gas(tx_data)
-#         print(f"Estimated gas: {estimated_gas}")
-#         tx_data['gas'] = str(estimated_gas) 
-#         # print("Transaction data:", tx_data)
-
-#         # Sign the transaction
-
-#         tx_data['chainId'] = str(int(tx_data['chainId'], 16)) 
-
-
-#         if isinstance(tx_data['data'], bytes):
-#             tx_data['data'] = Web3.to_hex(tx_data['data']) 
-
-#         signed_tx = agent_wallet.sign_payload(tx_data)
-#         print("Signed transaction.", signed_tx)
-
-#         # Broadcast the transaction
-#         tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
-
-#         # Wait for transaction receipt
-#         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-#         if receipt.status == 1:
-#             return f"Successfully summoned DAO. Transaction hash: {tx_hash.hex()}"
-#         else:
-#             return "Error summoning DAO: Transaction failed"
-
-#     except Exception as e:
-#         return f"Error summoning DAO: {str(e)}"
-    
-# def summon_dao_neg(dao_name, token_symbol, image, description, agent_wallet_address, chain_id=DEFAULT_CHAIN_ID):
-#     """
-#     Summon a DAO.
-
-#     Args:
-#         dao_name (str): Name of the DAO.
-#         token_symbol (str): Token symbol for the DAO.
-#         image (str): Image URL or path for the DAO.
-#         description (str): Description of the DAO.
-#         agent_wallet_address (str): Address of the agent wallet.
-#         chain_id (int): Blockchain network ID.
-
-#     Returns:
-#         str: Success or error message.
-#     """
-#     try:
-#         # Assemble arguments for summoning the DAO
-#         summon_args = assemble_meme_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, chain_id)
-#         # print("***************", summon_args)
-
-        
-
-#         initialization_loot_token_params = summon_args[0]
-#         initialization_share_token_params = summon_args[1]
-#         initialization_shaman_params = summon_args[2]
-#         # TODO: this seems to fail because we can not json serialize bytes[] and still work with the contract abi
-#         # post_initialization_actions = [
-#         #     action.encode('utf-8') if isinstance(action, str) else action for action in list(summon_args[3])
-#         # ]
-#         # post_initialization_actions = [
-#         #     action.encode('utf-8') if isinstance(action, str) else action for action in summon_args[3]
-#         # ]
-#         post_initialization_actions = summon_args[3]
-#         salt_nonce = int(summon_args[4])
-
-#         print("Type of post_initialization_actions:", type(post_initialization_actions))
-#         print("Items in post_initialization_actions:", [type(a) for a in post_initialization_actions])
-
-
-#         print("Processed arguments.")
-#         print("Type of initialization_loot_token_params:", type(initialization_loot_token_params))
-#         print("Type of initialization_share_token_params:", type(initialization_share_token_params))
-#         print("Type of initialization_shaman_params:", type(initialization_shaman_params))
-#         print("Type of post_initialization_actions:", type(post_initialization_actions), "Items:", [type(a) for a in post_initialization_actions])
-#         print("Type of saltNonce:", type(salt_nonce))
-
-#         # Create a dictionary with the correct structure
-#         summon_args_dict = {
-#             "initializationLootTokenParams": initialization_loot_token_params,
-#             "initializationShareTokenParams": initialization_share_token_params,
-#             "initializationShamanParams": initialization_shaman_params,
-#             "postInitializationActions": post_initialization_actions,
-#             "saltNonce": salt_nonce,
-#         }
-
-#         print("Final summon_args_dict:", summon_args_dict)
-#         for key, value in summon_args_dict.items():
-#             print(f"{key}: {value} (type: {type(value)})")
-
-#         # print("Processed summon_args_dict:", summon_args_dict)
-
-#         print("Summoning DAO...", SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID])
-
-#         # Invoke the contract
-#         # TODO: this seems to have issues with serealizing a more complex abi data for cdp
-#         # like the bytes[] that is needed with post_initialization_actions
-#         # a contract wrapper/factory that simplifies the format might be able to be used
-#         summon_invocation = agent_wallet.invoke_contract(
-#             contract_address=SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID],
-#             method="summonBaalFromReferrer",
-#             args=summon_args_dict,
-#             abi=yeet24_hos_summoner_abi,
-#             amount=None,
-#             asset_id="eth",
-#         )
-#         summon_invocation.wait()
-
-#         return "Successfully summoned DAO"
-
-#     except Exception as e:
-#         return f"Error summoning DAO: {str(e)}"
