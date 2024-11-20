@@ -117,22 +117,29 @@ Based Agent makes decisions and interacts with the blockchain autonomously. Here
 
 Unlock a world of possibilities with these built-in functions:
 
-### Token Operations
+### DAO operation
 
-- `create_token(name, symbol, initial_supply)`: Create a new ERC-20 token.
-- `transfer_asset(amount, asset_id, destination_address)`: Transfer assets to a specific address.
-- `get_balance(asset_id)`: Check the wallet balance of a specific asset.
+- `summon_dao`
+- `vote_on_dao_proposal`
+- `submit_proposa`
+- `get_dao_proposals`
+- `get_dao_proposal`
+- `get_dao_proposals_count`
 
-### NFT Operations
+### Farcaster operations
 
-- `deploy_nft(name, symbol, base_uri)`: Deploy a new ERC-721 NFT contract.
-- `mint_nft(contract_address, mint_to)`: Mint an NFT to a specified address.
+- `cast_to_farcaster(content: str)`
+- `check_cast_replies()`
+- `check_cast_notifications()`
+- `mark_notifications_as_seen()`
+- `cast_reply(content: str, parentHash: str, parent_fid: int)`
+- `check_recent_agent_casts()`
+- `check_recent_user_casts(fid: str)`
+- `check_user_profile(fid: str)`
 
 ### Utilities
 
-- `request_eth_from_faucet()`: Request ETH from the Base Sepolia testnet faucet.
 - `generate_art(prompt)`: Generate art using DALL-E based on a text prompt.
-
 - `get_agent_address`: get the address of the current agent
 
 ### Advanced (Experimental)
