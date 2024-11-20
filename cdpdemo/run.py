@@ -7,7 +7,7 @@ from swarm.repl import run_demo_loop
 from agents import based_agent
 from openai import OpenAI
 
-from prompt_helpers import set_character_file, get_thoughts, get_instructions
+from prompt_helpers import set_character_file, get_character_json, get_instructions
 from interval_utils import get_interval, set_random_interval
 
 
@@ -20,16 +20,16 @@ def run_autonomous_loop(agent):
     messages = []
 
     print("Starting autonomous Based Agent loop...")
-    autonomous_thoughts = get_thoughts()
+    character_json = get_character_json()
 
     while True:
         # Generate a thought
         thought = random.choices(
-            population=[thought['text'] for thought in autonomous_thoughts],
-            weights=[thought['weight'] for thought in autonomous_thoughts],
+            population=[thought['text'] for thought in character_json["autonomous_thoughts"]],
+            weights=[thought['weight'] for thought in character_json["autonomous_thoughts"]],
             k=1
         )[0]
-        thought = f"{pre_autonomous_thought} {thought} {post_autonomous_thought}"
+        thought = f"{character_json['pre_autonomous_thought']} {thought} {character_json['post_autonomous_thought']}"
 
         messages.append({"role": "user", "content": thought})
 

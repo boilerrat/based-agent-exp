@@ -22,7 +22,7 @@ def get_instructions():
 
 def get_thoughts():
     return f"""
-    {character_file_json["Pre-autonomous thought"]}
-    {character_file_json["Autonomous thoughts"]}
-    {character_file_json["Post-autonomous thought"]}
+    {character_file_json["pre_autonomous_thought"]}
+    {character_file_json["autonomous_thoughts"]}
+    {character_file_json["post_autonomous_thought"]}
     """ 
