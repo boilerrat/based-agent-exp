@@ -2,6 +2,7 @@
 import os
 
 from time import sleep
+from datetime import datetime, timezone
 from typing import List, Dict, Optional
 import requests
 import uuid
@@ -18,7 +19,9 @@ class DaohausGraphData:
         Initialize daohaus graph data
         python subgrounds https://thegraph.com/docs/en/querying/querying-with-python/
         """
-        print("initializing bot")
+        print("initializing graph data")
+        if not os.getenv("GRAPH_KEY") or not os.getenv("TARGET_DAO"):
+            raise ValueError("GRAPH_KEY and TARGET_DAO must be set in the .env file")
 
         self.sg = Subgrounds()
 
@@ -70,10 +73,17 @@ class DaohausGraphData:
             Dict: Proposals data
         """
         try:
+            # Current time in UTC as a synthetic field
+            now = datetime.now(timezone.utc).timestamp()
+
+            # Define a synthetic field for age
+            proposal = self.dh_v3.Proposal  # Assuming Proposal is an entity in the schema
+            proposal.age = now - proposal.createdAt
             # Construct the query
             proposals = self.dh_v3.Query.proposals(
                 first=10,
                 orderBy="createdAt",
+                orderDirection="desc",
                 where={"dao": self.dao_id},
             )
 
@@ -86,10 +96,14 @@ class DaohausGraphData:
                 proposals.noBalance,
                 proposals.createdAt,
                 proposals.details,
-                proposals.votes
+                proposals.votes,
+                proposals.age,  # Use synthetic field as a regular field
             ])
 
+            print("type of result", type(result))
+
             return result
+
         except Exception as e:
             return f"Error getting proposals data: {str(e)}"
         

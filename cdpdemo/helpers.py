@@ -3,6 +3,9 @@ import random
 from eth_abi import encode as encode_abi
 from eth_utils import function_signature_to_4byte_selector
 
+from web3 import Web3
+from web3.exceptions import ContractLogicError
+
 def get_salt_nonce(length=32):
     possible = "0123456789"
     return ''.join(random.choice(possible) for _ in range(length))
