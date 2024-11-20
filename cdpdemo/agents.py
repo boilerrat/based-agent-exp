@@ -32,10 +32,6 @@ from dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_addres
 
 
 from constants_utils import (
-    BASENAMES_REGISTRAR_CONTROLLER_ADDRESS_MAINNET,
-    BASENAMES_REGISTRAR_CONTROLLER_ADDRESS_TESTNET,
-    L2_RESOLVER_ADDRESS_MAINNET,
-    L2_RESOLVER_ADDRESS_TESTNET,
     SUMMON_CONTRACTS,
     DEFAULT_CHAIN_ID,
 )
@@ -52,34 +48,19 @@ PRIVATE_KEY = os.getenv("CDP_PRIVATE_KEY", "").replace('\\n', '\n')
 # Configure CDP with environment variables
 Cdp.configure(API_KEY_NAME, PRIVATE_KEY)
 
-# Create a new wallet on the Base Sepolia testnet
-# You could make this a function for the agent to create a wallet on any network
-# If you want to use Base Mainnet, change Wallet.create() to Wallet.create(network_id="base-mainnet")
-# see https://docs.cdp.coinbase.com/mpc-wallet/docs/wallets for more information
-# agent_wallet = Wallet.create(network_id="base-mainnet")
-
-# NOTE: the wallet is not currently persisted, meaning that it will be deleted after the agent is stopped. To persist the wallet, see https://docs.cdp.coinbase.com/mpc-wallet/docs/wallets#developer-managed-wallets
-# Here's an example of how to persist the wallet:
-# WARNING: This is for development only - implement secure storage in production!
-
-# Export wallet data (contains seed and wallet ID)
-# wallet_data = agent_wallet.export_data()
-# wallet_dict = wallet_data.to_dict()
-
-# Example of saving to encrypted local file
-# file_path = "base_wallet_seed.json"
-# agent_wallet.save_seed(file_path, encrypt=True)
-# print(f"Seed for wallet {agent_wallet.id} saved to {file_path}")
-
-# Example of loading a saved wallet:
 # 1. Fetch the wallet by ID
-# agent_wallet = Wallet.fetch("278ecde2-f10c-42db-9fda-fb4db022fcca") # testnet
-agent_wallet = Wallet.fetch("6dafdeee-a356-408f-9d27-e55abbb1ea64") # mainnet
+# Get the environment variable
+target_agent_wallet_id = os.getenv("TARGET_AGENT_WALLET_ID")
+
+# Check if the environment variable exists
+if target_agent_wallet_id is None:
+    raise EnvironmentError("The environment variable 'TARGET_AGENT_WALLET_ID' is not set. You can generate one with `run create_wallet.py`.")
+
+agent_wallet = Wallet.fetch(os.getenv("TARGET_AGENT_WALLET_ID")) # mainnet
+
 # 2. Load the saved seed
 agent_wallet.load_seed("base_wallet_seed.json")
 
-# Example of importing previously exported wallet data:
-# imported_wallet = Wallet.import_data(wallet_dict)
 
 # Request funds from the faucet (only works on testnet)
 # faucet = agent_wallet.faucet()

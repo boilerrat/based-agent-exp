@@ -78,6 +78,11 @@ pip3 install poetry
 poetry install
 ```
 
+**first time running** if this is your first time running and you do not have a wallet seed file you can create one with (you will need to add these values to your env)
+```bash
+python create_wallet.py
+```
+
 from cdpdemo run the python script. json file example: default_character_data.json
 ```bash
 python run.py <json file name>

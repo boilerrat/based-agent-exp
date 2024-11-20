@@ -207,7 +207,7 @@ if __name__ == "__main__":
         character_file_path = sys.argv[1].lower().strip()
         set_character_file(character_file_path)
     else:
-        character_file_path = "default_data.json"
+        character_file_path = "default_character_data.json"
         set_character_file(character_file_path)
     print(f"Starting Based Agent ({character_file_path})...")
     main()
