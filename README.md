@@ -78,17 +78,17 @@ pip3 install poetry
 poetry install
 ```
 
-from cdpdemo
+from cdpdemo run the python script. json file example: default_character_data.json
 ```bash
-python run.py
+python run.py <json file name>
 ```
 > note CDP error happened on build
 
 > See the comments in agents.py about creating a persistent agent with a wallet seed file.
 > for mainnet-base you will need to fund the agent wallet with some gas money
 
-### Customize prompt
-You can edit the initial prompt in prompt_helpers.py
+### Customize Character
+You can edit the character by creating your own character json file in the /characters folder
 
 ### Watch the Magic Happen! ✨
 

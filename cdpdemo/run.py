@@ -1,13 +1,15 @@
 import time
 import json
 import random
+import sys
 from swarm import Swarm
 from swarm.repl import run_demo_loop
 from agents import based_agent
 from openai import OpenAI
 
-from prompt_helpers import pre_autonomous_thought, autonomous_thoughts, post_autonomous_thought
+from prompt_helpers import set_character_file, get_thoughts, get_instructions
 from interval_utils import get_interval, set_random_interval
+
 
 interval = 1800
 
@@ -18,6 +20,7 @@ def run_autonomous_loop(agent):
     messages = []
 
     print("Starting autonomous Based Agent loop...")
+    autonomous_thoughts = get_thoughts()
 
     while True:
         # Generate a thought
@@ -64,7 +67,7 @@ def run_openai_conversation_loop(agent):
         "role":
         "system",
         "content":
-        "You are a user guiding a blockchain agent through various tasks on the Base blockchain. Engage in a conversation, suggesting actions and responding to the agent's outputs. Be creative and explore different blockchain capabilities. Options include creating tokens, transferring assets, minting NFTs, and getting balances. You're not simulating a conversation, but you will be in one yourself. Make sure you follow the rules of improv and always ask for some sort of function to occur. Be unique and interesting."
+        "You are a user guiding a blockchain agent through various tasks on the Base blockchain. Engage in a conversation, suggesting actions and responding to the agent's outputs. Be creative and explore different blockchain capabilities. You're not simulating a conversation, but you will be in one yourself. Make sure you follow the rules of improv and always ask for some sort of function to occur. Be unique and interesting."
     }, {
         "role":
         "user",
@@ -186,12 +189,13 @@ def pretty_print_messages(messages) -> None:
 
 
 def main():
+
     mode = choose_mode()
 
     mode_functions = {
-        'chat': lambda: run_demo_loop(based_agent),
-        'auto': lambda: run_autonomous_loop(based_agent),
-        'two-agent': lambda: run_openai_conversation_loop(based_agent)
+        'chat': lambda: run_demo_loop(based_agent(get_instructions())),
+        'auto': lambda: run_autonomous_loop(based_agent(get_instructions())),
+        'two-agent': lambda: run_openai_conversation_loop(based_agent(get_instructions()))
     }
 
     print(f"\nStarting {mode} mode...")
@@ -199,5 +203,11 @@ def main():
 
 
 if __name__ == "__main__":
-    print("Starting Based Agent...")
+    if len(sys.argv) > 1:
+        character_file_path = sys.argv[1].lower().strip()
+        set_character_file(character_file_path)
+    else:
+        character_file_path = "default_data.json"
+        set_character_file(character_file_path)
+    print(f"Starting Based Agent ({character_file_path})...")
     main()
