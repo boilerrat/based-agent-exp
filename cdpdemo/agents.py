@@ -283,27 +283,26 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
 def get_dao_proposals():
     """
     Get all DAO proposals.
-
-    this returns the first 10 proposals using subgrounds
-            result = self.sg.query([
-                proposals.proposalId,
-                proposals.yesVotes,
-                proposals.noVotes,
-                proposals.yesBalance,
-                proposals.noBalance,
-                proposals.createdAt,
-                proposals.details,
-                proposals.votes,
-                proposals.age,  # Use synthetic field as a regular field
-            ])
-
-        age is the last index in seconds 
     
     """
 
     try:
         # Construct the query
         proposals = dh_graph.get_proposals_data()
+        return proposals
+    except Exception as e:
+        return f"Error getting DAO proposals: {str(e)}"
+    
+def get_passed_dao_proposals():
+    """
+    Get all passed DAO proposals.
+    
+    """
+
+    try:
+        # Construct the query
+        proposals = dh_graph.get_passed_proposals_data()
+        print(proposals)
         return proposals
     except Exception as e:
         return f"Error getting DAO proposals: {str(e)}"
@@ -459,6 +458,7 @@ def based_agent(instructions: str ):
         vote_on_dao_proposal,
         # get_current_proposal_count
         get_dao_proposals,
+        get_passed_dao_proposals,
         get_dao_proposal,
         get_proposal_count,
         summon_dao

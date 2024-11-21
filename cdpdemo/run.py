@@ -11,7 +11,8 @@ from prompt_helpers import set_character_file, get_character_json, get_instructi
 from interval_utils import get_interval, set_random_interval
 
 
-interval = 1800
+lower_interval = 600
+upper_interval = 3600
 
 # this is the main loop that runs the agent in autonomous mode
 # you can modify this to change the behavior of the agent
@@ -45,7 +46,7 @@ def run_autonomous_loop(agent):
         messages.extend(response_obj.messages)
 
         # Set a random interval between 600 and 3600 seconds
-        set_random_interval(600, 3600)
+        set_random_interval(lower_interval, upper_interval)
 
         print(f"\n\033[90mNext thought in {get_interval()} seconds...\033[0m")
         # Wait for the specified interval
@@ -191,11 +192,13 @@ def pretty_print_messages(messages) -> None:
 def main():
 
     mode = choose_mode()
+    instructions = get_instructions()
+    print(instructions)
 
     mode_functions = {
-        'chat': lambda: run_demo_loop(based_agent(get_instructions())),
-        'auto': lambda: run_autonomous_loop(based_agent(get_instructions())),
-        'two-agent': lambda: run_openai_conversation_loop(based_agent(get_instructions()))
+        'chat': lambda: run_demo_loop(based_agent(instructions)),
+        'auto': lambda: run_autonomous_loop(based_agent(instructions)),
+        'two-agent': lambda: run_openai_conversation_loop(based_agent(instructions))
     }
 
     print(f"\nStarting {mode} mode...")

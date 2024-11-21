@@ -17,6 +17,7 @@ def get_instructions():
     Communications: {character_file_json["Communications"]}
     Friends: {character_file_json["Friends"]}
     Interests: {character_file_json["Interests"]}
+    Platform: {character_file_json["Platform"]}
     Extra: {character_file_json["Extra"]}
     """
 

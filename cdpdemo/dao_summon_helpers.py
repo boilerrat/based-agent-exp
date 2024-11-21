@@ -311,9 +311,7 @@ def assemble_shaman_params(price, multiplier, member_address, calculated_shaman_
 
     end_date_time = int(start_date) + DEFAULT_DURATION
 
-    # Encoding the parameters for yeeterShaman
-    yeeter_shaman_params = encode_abi(
-        [
+    types = [
             "uint256",
             "uint256",
             "bool",
@@ -322,23 +320,40 @@ def assemble_shaman_params(price, multiplier, member_address, calculated_shaman_
             "uint256",
             "address[]",
             "uint256[]",
-        ],
-        [
-            int(start_date),
-            end_date_time,
-            DEFAULT_YEETER_VALUES["isShares"],
-            int(price),
-            int(multiplier),
-            DEFAULT_YEETER_VALUES["minThresholdGoal"],
-            [
-                *DEFAULT_YEETER_VALUES["feeRecipients"],
-                calculated_shaman_address,
-            ],
-            [
-                *DEFAULT_YEETER_VALUES["feeAmounts"],
-                DEFAULT_MEME_YEETER_VALUES["boostRewardFees"],
-            ],
         ]
+    
+
+    # Prepare the fee recipients list
+    fee_recipients = [
+        *DEFAULT_YEETER_VALUES["feeRecipients"],
+        calculated_shaman_address,
+    ]
+
+    fee_amounts = [
+        *DEFAULT_YEETER_VALUES["feeAmounts"],
+        DEFAULT_MEME_YEETER_VALUES["boostRewardFees"],
+    ]
+
+    # Conditionally add the agent to fee recipients if it exists
+    if member_address:
+        fee_recipients.append(member_address)
+        fee_amounts.append(DEFAULT_YEETER_VALUES["feeAmounts"][0])
+
+    values = [
+        int(start_date),
+        end_date_time,
+        DEFAULT_YEETER_VALUES["isShares"],
+        int(price),
+        int(multiplier),
+        DEFAULT_YEETER_VALUES["minThresholdGoal"],
+        fee_recipients,
+        fee_amounts,
+    ]
+
+    # Encoding the parameters for yeeterShaman
+    yeeter_shaman_params = encode_abi(
+        types,
+        values
     )
 
     shaman_singletons = [mm_shaman_singleton, yeeter_shaman_singleton]
