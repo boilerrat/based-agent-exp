@@ -71,7 +71,7 @@ python3 -m venv my-env
 
 make sure venv is activated and run poetry 
 ```bash
-source cdpdemo/bin/activate
+source my-env/bin/activate
 
 pip3 install poetry
 
