@@ -8,3 +8,5 @@ lib/
 lib64/
 bin/
 include/
+
+poetry.lock
