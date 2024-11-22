@@ -163,7 +163,6 @@ class FarcasterBot:
                 if notification.get('type') in ['reply', 'mention'] and 'cast' in notification
             ]
 
-            print(result)
 
             return result
 
