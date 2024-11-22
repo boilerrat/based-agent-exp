@@ -140,8 +140,6 @@ class DaohausGraphData:
                 proposals.age,  # Use synthetic field as a regular field
             ])
 
-            print("type of result", type(result))
-
             return result
 
         except Exception as e:

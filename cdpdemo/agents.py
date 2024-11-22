@@ -353,7 +353,6 @@ def get_passed_dao_proposals():
     try:
         # Construct the query
         proposals = dh_graph.get_passed_proposals_data()
-        print(proposals)
         return proposals
     except Exception as e:
         return f"Error getting DAO proposals: {str(e)}"

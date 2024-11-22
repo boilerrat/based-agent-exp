@@ -73,9 +73,9 @@ DEFAULT_YEETER_VALUES = {
         "0x4a9a27d614a74ee5524909ca27bdbcbb7ed3b315",
     ],  # yeeter team, daohaus eco fund 
     "feeAmounts": [5000, 5000],  # .5% fees
-    "multiplier": 10000,
-    "minThresholdGoal": 1000000000000000,  # .1
-    "price": 100000000000000, # .0001
+    "multiplier": 100000,
+    "minThresholdGoal": 10000000000000000,  # .01
+    "price": 1000000000000000, # .001
 }
 
 DEFAULT_SUMMON_VALUES = {
