@@ -23,18 +23,20 @@ class FarcasterBot:
         }
 
         
-    def post_cast(self, content: str, parent: Optional[str] = None, parent_fid: Optional[str] = None) -> str:
+    def post_cast(self, content: str, channel_id: Optional[str] = None,parent: Optional[str] = None, parent_fid: Optional[str] = None) -> str:
         """
         Post a cast
         
         Args:
             content (str): The content of the cast
+            channel_id (Optional[str]): The channel ID
             parent (Optional[str]): The parent cast hash (for reply)
             
         Returns:
             str: Status message about the cast
         """
         try:
+            channel_id = channel_id or os.getenv("FARCASTER_CHANNEL_ID")
             url = self.v2_url + "cast"
             unique_id = str(uuid.uuid4())[:16]
             payload = { 
@@ -47,6 +49,8 @@ class FarcasterBot:
                 payload["parent"] = parent
             if parent_fid:
                 payload["parent_fid"] = parent_fid
+            if channel_id:
+                payload["channel_id"] = channel_id
             response = requests.post(url, json=payload, headers=self.headers)
 
             return f"Successfully posted cast with ID: {response.json()['cast']['hash']}"

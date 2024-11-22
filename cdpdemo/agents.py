@@ -390,17 +390,18 @@ def get_proposal_count() -> str:
         return f"Error getting proposals count: {str(e)}"
 
 # function to cast to farcaster
-def cast_to_farcaster(content: str):
+def cast_to_farcaster(content: str, channel_id: Optional[str] = None) -> str:
     """
     Cast a message to Warpcast.
 
     Args:
         content (str): The content to cast
+        channel_id (Optional[str]): The channel ID
 
     Returns:
         str: Status message about the cast
     """
-    return farcaster_bot.post_cast(content)
+    return farcaster_bot.post_cast(content, channel_id)
 
 def check_cast_replies():
     """
