@@ -96,6 +96,23 @@ class FarcasterBot:
         except Exception as e:
             return f"Error getting replies: {str(e)}"
         
+    def safe_get(d, keys, default=None):
+        """
+        Safely access a nested dictionary.
+        Args:
+            d (dict): The dictionary to access.
+            keys (list): A list of keys representing the nested structure.
+            default: The default value to return if any key is missing.
+        Returns:
+            The value at the nested key or the default value.
+        """
+        for key in keys:
+            if isinstance(d, dict):
+                d = d.get(key, default)
+            else:
+                return default
+        return d
+        
     def get_notifications(self) -> List[Dict]:
         """
         Get recent replies
@@ -119,7 +136,7 @@ class FarcasterBot:
             # Extract the list of notifications from the response
             notifications = response_data.get('notifications', [])
 
-            # Extracting details from each notification
+# notification['cast']['author']['verified_address']['eth_addresses'][0]
             result = [
                 {
                     'timestamp': notification['cast']['timestamp'],
@@ -127,6 +144,13 @@ class FarcasterBot:
                     'text': notification['cast']['text'],
                     'author': notification['cast']['author']['username'],
                     'author_fid':  notification['cast']['author']['fid'],
+                    'author_verified_address': (
+                            notification['cast']['author']['verified_addresses']['eth_addresses'][0]
+                            if 'verified_addresses' in notification['cast']['author'] and
+                            'eth_addresses' in notification['cast']['author']['verified_addresses'] and
+                            len(notification['cast']['author']['verified_addresses']['eth_addresses']) > 0
+                            else None
+                        ),
                     'type': notification['type'],
                     'seen': notification['seen'],
                     'age_in_sec': (datetime.utcnow() - datetime.strptime(notification['cast']['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ")).total_seconds()
@@ -134,6 +158,8 @@ class FarcasterBot:
                 for notification in notifications
                 if notification.get('type') in ['reply', 'mention'] and 'cast' in notification
             ]
+
+            print(result)
 
             return result
 
