@@ -27,10 +27,7 @@ with open("abis/yeet24_hos_summoner_abi.json", "r") as abi_file:
 with open("abis/gnosis_multisend_abi.json", "r") as abi_file:
     gnosis_multisend_abi = json.load(abi_file)
 
-
 from dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_address, assemble_yeeter_summoner_args
-
-
 
 from constants_utils import (
     SUMMON_CONTRACTS,
