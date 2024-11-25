@@ -12,6 +12,7 @@ from web3 import Web3
 from web3.exceptions import ContractLogicError
 from farcaster_utils import FarcasterBot
 from graph_utils import DaohausGraphData
+from image_utils import ImageThumbnailer
 
 
 # Load the ENS registrar and resolver ABIs
@@ -128,6 +129,13 @@ def generate_art(prompt):
         )
 
         image_url = response.data[0].url
+
+        if os.getenv("IMG_BB_API_KEY"):
+            # save image to imgbb
+
+            image = ImageThumbnailer()
+            image_url = image.upload_image(image_url)
+
         return f"Generated artwork available at: {image_url}"
 
     except Exception as e:

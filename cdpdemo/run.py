@@ -11,8 +11,8 @@ from prompt_helpers import set_character_file, get_character_json, get_instructi
 from interval_utils import get_interval, set_random_interval
 
 
-lower_interval = 600
-upper_interval = 1800
+lower_interval = 200
+upper_interval = 600
 
 # this is the main loop that runs the agent in autonomous mode
 # you can modify this to change the behavior of the agent
