@@ -75,7 +75,7 @@ DEFAULT_YEETER_VALUES = {
     "feeAmounts": [5000, 5000],  # .5% fees
     "multiplier": 100000,
     "minThresholdGoal": 10000000000000000,  # .01
-    "price": 1000000000000000, # .001
+    "price": 1000000000000000, # .0069
 }
 
 DEFAULT_SUMMON_VALUES = {
@@ -83,7 +83,7 @@ DEFAULT_SUMMON_VALUES = {
   "gracePeriodInSeconds": 172800,
   "newOffering": 10000000000000000, # .1
   "quorum": 15,
-  "sponsorThreshold": 1000000000000000000000, # 1000
+  "sponsorThreshold": 100000000000000000000, # 100
   "minRetention": 33,
   "votingTransferable": False,
   "nvTransferable": True,

@@ -13,6 +13,7 @@ from web3.exceptions import ContractLogicError
 from farcaster_utils import FarcasterBot
 from graph_utils import DaohausGraphData
 
+
 # Load the ENS registrar and resolver ABIs
 with open("abis/registrar_abi.json", "r") as abi_file:
     registrar_abi = json.load(abi_file)
@@ -219,7 +220,7 @@ def summon_meme_token_dao(dao_name, token_symbol, image, description, agent_wall
         )
         summon_invocation.wait()
 
-        return f"Successfully summoned DAO {calculate_dao_address(salt_nonce)}"
+        return f"Successfully summoned DAO {calculate_dao_address(salt_nonce)} you can view at https://speedball.daohaus.club/"
 
     except Exception as e:
         return f"Error summoning DAO: {str(e)}"
@@ -257,7 +258,7 @@ def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_e
             "saltNonce": str(salt_nonce),
         }
 
-        print("Summoning DAO with...", SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID])
+        print("Summoning crowdfund DAO at https://yeet.haus/ on Base...")
 
         # Invoke the contract
         summon_invocation = agent_wallet.invoke_contract(
@@ -280,7 +281,6 @@ def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_e
 def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal_link: str) -> str:
     """
     Submit a DAO Proposal. 
-    Proposals can be accessed at this link https://admin.daohaus.club/#/molochv3/0x2105/0x5dc22d379d052ba0c6210101450a943e48c5404b/proposals
 
     Args:
         proposal_title (str): The proposal title.
@@ -325,15 +325,18 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
         )
         invocation.wait()
         
-        return f"Successfully submitted proposal for dao address {dao_address}. Proposal details link: https://admin.daohaus.club/#/molochv3/0x2105/0x5dc22d379d052ba0c6210101450a943e48c5404b/proposals"
+        return f"Successfully submitted proposal for dao address {dao_address}."
 
 
     except Exception as e:
         return f"Error Submitting Proposal in DAO: {str(e)}"
     
-def get_dao_proposals():
+def get_dao_proposals() -> str:
     """
     Get all DAO proposals.
+
+    Returns:
+        str: DAO proposals data
     
     """
 
@@ -344,9 +347,12 @@ def get_dao_proposals():
     except Exception as e:
         return f"Error getting DAO proposals: {str(e)}"
     
-def get_passed_dao_proposals():
+def get_passed_dao_proposals() -> str:
     """
     Get all passed DAO proposals.
+
+    Returns:
+        str: DAO passed proposals data
     
     """
 
@@ -365,7 +371,7 @@ def get_dao_proposal(proposal_id: int) -> str:
         proposal_id (str): The proposal ID.
 
     Returns:
-        str: The proposal details.
+        str: DAO proposal data
     """
     try:
         # Construct the query
@@ -373,7 +379,24 @@ def get_dao_proposal(proposal_id: int) -> str:
         return proposal
     except Exception as e:
         return f"Error getting DAO proposal: {str(e)}"
-    
+
+def get_proposal_votes_data(proposal_id: int) -> str:
+    """
+    Get proposal votes data
+
+    Args:
+        proposal_id (int): The proposal ID
+
+    Returns:
+        str: Proposal votes data
+    """
+    try:
+        # Construct the query
+        votes = dh_graph.get_proposal_votes_data(proposal_id)
+        return votes
+    except Exception as e:
+        return f"Error getting proposal votes data: {str(e)}"
+
 def get_proposal_count() -> str:
     """
     Get the current proposal count
@@ -512,6 +535,7 @@ def based_agent(instructions: str ):
         get_passed_dao_proposals,
         get_dao_proposal,
         get_proposal_count,
+        get_proposal_votes_data,
         summon_meme_token_dao,
         summon_crowd_fund_dao
     ],
