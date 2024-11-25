@@ -168,7 +168,7 @@ def assemble_yeeter_shaman_params(price, multiplier, member_address, start_date,
     values = [
         int(start_date),
         end_date_time,
-        False, # isShares is false on crowdfunds
+        False, # isShares
         int(price),
         int(multiplier),
         DEFAULT_YEETER_VALUES["minThresholdGoal"],

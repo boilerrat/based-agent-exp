@@ -257,6 +257,7 @@ def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_e
 
         print("Summoning crowdfund DAO at https://yeet.haus/ on Base...")
 
+
         # Invoke the contract
         summon_invocation = agent_wallet.invoke_contract(
             contract_address=SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID],
@@ -266,7 +267,10 @@ def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_e
             amount=None,
             asset_id="eth",
         )
+
         summon_invocation.wait()
+
+
 
         return f"Successfully summoned DAO {calculate_dao_address(salt_nonce)}"
 
