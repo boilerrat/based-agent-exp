@@ -13,7 +13,7 @@ from web3.exceptions import ContractLogicError
 from farcaster_utils import FarcasterBot
 from graph_utils import DaohausGraphData
 from image_utils import ImageThumbnailer
-from tinydb import TinyDB, Query
+from memory_retention_utils import MemoryRetention
 
 
 # Load the ENS registrar and resolver ABIs
@@ -66,11 +66,6 @@ agent_wallet.load_seed("base_wallet_seed.json")
 # faucet = agent_wallet.faucet()
 # print(f"Faucet transaction: {faucet}")
 # print(f"Agent wallet address: {agent_wallet.default_address.address_id}")
-
-# init local db
-print("Initializing local database...")
-db = TinyDB('db.json')
-
 
 # Function to get the balance of a specific asset
 def get_balance(asset_id):
@@ -563,6 +558,8 @@ def based_agent(instructions: str ):
 farcaster_bot = FarcasterBot()
 # init the graph
 dh_graph = DaohausGraphData()
+# init memory retention
+memory_retention = MemoryRetention()
     
 
 # To add a new function:
