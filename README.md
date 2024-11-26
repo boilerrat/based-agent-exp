@@ -2,6 +2,8 @@
 
 An experimental playground for autonomous onchain interactions, and the starting point of the autonomous onchain agent revolution. 
 
+> this is a repo to experiment on stuff, not for production use
+
 ## Introduction
 
 Based Agent helps LLM agents directly interact with the blockchain, built on top of the [Coinbase Developer Platform (CDP)](https://cdp.coinbase.com/) and OpenAI's [Swarm](https://github.com/openai/swarm). This is meant to be a template where anyone can add their own features and functions that can be autonomously executed by an agent with access to the entire onchain ecosystem.
