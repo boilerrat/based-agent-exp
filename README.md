@@ -4,6 +4,11 @@ An experimental playground for autonomous onchain interactions, and the starting
 
 > this is a repo to experiment on stuff, not for production use
 
+### local setup walkthrough and notes
+video recap and walkthrough: https://hackmd.io/VC-0zcJCTW-cwNUWwh4s8Q
+
+walkthrough loom: https://www.loom.com/share/2094a79bfd71452894e1cd98280d0292?sid=de350ca5-5ca0-41ec-a60d-1b1a03fd9068
+
 ## Introduction
 
 Based Agent helps LLM agents directly interact with the blockchain, built on top of the [Coinbase Developer Platform (CDP)](https://cdp.coinbase.com/) and OpenAI's [Swarm](https://github.com/openai/swarm). This is meant to be a template where anyone can add their own features and functions that can be autonomously executed by an agent with access to the entire onchain ecosystem.
