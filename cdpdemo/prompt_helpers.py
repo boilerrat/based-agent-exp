@@ -4,6 +4,7 @@ character_file_json = {}
 
 def set_character_file(file):
     global character_file_json
+    print(f"loaded characters/{file}")
     with open(f"characters/{file}", "r") as character_file:
         character_file_json = json.load(character_file)
 

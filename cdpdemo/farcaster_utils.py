@@ -126,7 +126,7 @@ class FarcasterBot:
         """
         try:
             # Constructing the URL for fetching notifications
-            url = self.v2_url + "notifications?fid=" + os.getenv("FARCASTER_FID") + "&type=&priority_mode=false"
+            url = self.v2_url + "notifications?channel_ids=quarters&fid=" + os.getenv("FARCASTER_FID") + "&type=&priority_mode=false"
 
             response = requests.get(url, headers=self.headers)
 
