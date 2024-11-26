@@ -517,6 +517,34 @@ def check_user_profile(fid: str):
     response = farcaster_bot.get_user_by_username(fid)
     return response
 
+# Functions to interact with memory retention
+# def store_memory(self, memory: Dict) -> str:
+def commit_memory(memory:str):
+    """
+    Store a memory
+    """
+    return memory_retention.store_memory({"type": "memory", "content": memory})
+def get_all_memories():
+    """
+    Get all memories
+    """
+    return memory_retention.get_all_memories()
+def get_memories(query):
+    """
+    Get memories
+    """
+    return memory_retention.get_memories(query)
+def delete_memory(query):
+    """
+    Delete a memory
+    """
+    return memory_retention.delete_memory(query)
+def get_memory_count():
+    """
+    Get the count of memories
+    """
+    return memory_retention.get_memory_count()
+
 # Create the Based Agent with all available functions
 
 print("Creating Based Agent...")

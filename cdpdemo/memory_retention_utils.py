@@ -113,4 +113,18 @@ class MemoryRetention:
             return "Successfully cleared memories"
         except Exception as e:
             return f"Error clearing memories: {str(e)}"
+    
+    def get_memory_count(self) -> str:
+        """
+        Get the count of memories
+
+        Returns:
+            str: The count of memories
+        """
+        try:
+            count = len(self.get_all_memories())
+            return count
+        except Exception as e:
+            return f"Error getting memory count: {str(e)}"
+
         
