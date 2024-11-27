@@ -13,7 +13,7 @@ from web3.exceptions import ContractLogicError
 from farcaster_utils import FarcasterBot
 from graph_utils import DaohausGraphData
 from image_utils import ImageThumbnailer
-from tinydb import TinyDB, Query
+from memory_retention_utils import MemoryRetention
 
 
 # Load the ENS registrar and resolver ABIs
@@ -66,11 +66,6 @@ agent_wallet.load_seed("base_wallet_seed.json")
 # faucet = agent_wallet.faucet()
 # print(f"Faucet transaction: {faucet}")
 # print(f"Agent wallet address: {agent_wallet.default_address.address_id}")
-
-# init local db
-print("Initializing local database...")
-db = TinyDB('db.json')
-
 
 # Function to get the balance of a specific asset
 def get_balance(asset_id):
@@ -522,6 +517,34 @@ def check_user_profile(fid: str):
     response = farcaster_bot.get_user_by_username(fid)
     return response
 
+# Functions to interact with memory retention
+# def store_memory(self, memory: Dict) -> str:
+def commit_memory(memory:str):
+    """
+    Store a memory
+    """
+    return memory_retention.store_memory({"type": "memory", "content": memory})
+def get_all_memories():
+    """
+    Get all memories
+    """
+    return memory_retention.get_all_memories()
+def get_memories(query):
+    """
+    Get memories
+    """
+    return memory_retention.get_memories(query)
+def delete_memory(query):
+    """
+    Delete a memory
+    """
+    return memory_retention.delete_memory(query)
+def get_memory_count():
+    """
+    Get the count of memories
+    """
+    return memory_retention.get_memory_count()
+
 # Create the Based Agent with all available functions
 
 print("Creating Based Agent...")
@@ -551,7 +574,10 @@ def based_agent(instructions: str ):
         get_proposal_count,
         get_proposal_votes_data,
         summon_meme_token_dao,
-        summon_crowd_fund_dao
+        summon_crowd_fund_dao,
+        commit_memory,
+        get_all_memories,
+
     ],
 )
 
@@ -563,6 +589,8 @@ def based_agent(instructions: str ):
 farcaster_bot = FarcasterBot()
 # init the graph
 dh_graph = DaohausGraphData()
+# init memory retention
+memory_retention = MemoryRetention()
     
 
 # To add a new function:
