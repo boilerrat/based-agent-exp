@@ -574,7 +574,10 @@ def based_agent(instructions: str ):
         get_proposal_count,
         get_proposal_votes_data,
         summon_meme_token_dao,
-        summon_crowd_fund_dao
+        summon_crowd_fund_dao,
+        commit_memory,
+        get_all_memories,
+
     ],
 )
 
