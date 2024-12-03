@@ -16,7 +16,7 @@ from constants_utils import (
     )
 
 TARGET_CHAIN = os.getenv("TARGET_CHAIN", "0x2105")
-GRAPH_URL = "https://gateway-arbitrum.network.thegraph.com/api/" + os.getenv("GRAPH_KEY") + DAOHAUS_GRAPH_URLS[TARGET_CHAIN]
+GRAPH_URL = "https://gateway-arbitrum.network.thegraph.com/api/" + os.getenv("GRAPH_KEY", "nokey") + DAOHAUS_GRAPH_URLS[TARGET_CHAIN]
 
 
 class DaohausGraphData:

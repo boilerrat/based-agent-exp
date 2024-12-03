@@ -13,3 +13,5 @@ lib64
 poetry.lock
 
 db.json
+
+ai-env/
