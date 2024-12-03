@@ -20,7 +20,7 @@ def run_autonomous_loop(agent):
     client = Swarm()
     messages = []
 
-    print("Starting autonomous Based Agent loop...")
+    print("Starting autonomous DAO Agent loop...")
     character_json = get_character_json()
 
     while True:
@@ -212,5 +212,5 @@ if __name__ == "__main__":
     else:
         character_file_path = "default_character_data.json"
         set_character_file(character_file_path)
-    print(f"Starting Based Agent ({character_file_path})...")
+    print(f"Starting DAO Agent ({character_file_path})...")
     main()

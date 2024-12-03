@@ -395,6 +395,19 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
         # Load the DAO contract
         dao_contract = w3.eth.contract(address=Web3.to_checksum_address(dao_address), abi=baal_abi)
 
+        try:
+            estimated_gas =  dao_contract.functions.submitProposal(
+            "",              # proposalData (empty string as per the original args_dict)
+            "0",             # expiration (default is "0")
+            "0",             # baalGas (default is "0")
+            proposal         # details (the serialized proposal details)
+        ).estimate_gas({
+                "from": agent_wallet.address,
+            })
+            print(f"Estimated gas: {estimated_gas}")
+        except Exception as e:
+            return f"Error estimating gas: {str(e)}"
+
         # Prepare transaction arguments
         tx = dao_contract.functions.submitProposal(
             "",              # proposalData (empty string as per the original args_dict)
@@ -404,7 +417,7 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
         ).build_transaction({
             "from": agent_wallet.address,
             "nonce": w3.eth.get_transaction_count(agent_wallet.address),
-            "gas": 300000,  # Adjust based on actual gas requirements
+            "gas": estimated_gas,  
             "gasPrice": w3.eth.gas_price,  # Dynamic gas price
         })
 
@@ -630,7 +643,7 @@ def get_memory_count():
     """
     return memory_retention.get_memory_count()
 
-# Create the Based Agent with all available functions
+# Create the DAO Agent with all available functions
 
 print("Creating Agent...")
 
@@ -666,10 +679,6 @@ def dao_agent(instructions: str ):
     ],
 )
 
-# add the following import to the top of the file, add the code below it, and add the new functions to the based_agent.functions list
-
-# from farcaster_utils import FarcasterBot
-
 # Initialize FarcvasterBot with your credentials
 farcaster_bot = FarcasterBot()
 # init the graph
@@ -677,38 +686,3 @@ dh_graph = DaohausGraphData()
 # init memory retention
 memory_retention = MemoryRetention()
     
-
-# To add a new function:
-# 1. Define your function above (follow the existing pattern)
-# 2. Add appropriate error handling
-# 3. Add the function to the based_agent's functions list
-# 4. If your function requires new imports or global variables, add them at the top of the file
-# 5. Test your new function thoroughly before deploying
-
-# Example of adding a new function:
-# def my_new_function(param1, param2):
-#     """
-#     Description of what this function does.
-#
-#     Args:
-#         param1 (type): Description of param1
-#         param2 (type): Description of param2
-#
-#     Returns:
-#         type: Description of what is returned
-#     """
-#     try:
-#         # Your function logic here
-#         result = do_something(param1, param2)
-#         return f"Operation successful: {result}"
-#     except Exception as e:
-#         return f"Error in my_new_function: {str(e)}"
-
-# Then add to based_agent.functions:
-# based_agent = Agent(
-#     ...
-#     functions=[
-#         ...
-#         my_new_function,
-#     ],
-# )
