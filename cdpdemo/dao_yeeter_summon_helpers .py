@@ -39,7 +39,6 @@ with open("abis/safe_L2_abi.json", "r") as abi_file:
 
 from constants_utils import (
     SUMMON_CONTRACTS,
-    DEFAULT_CHAIN_ID,
     DEFAULT_DAO_PARAMS,
     DEFAULT_START_DATE_OFFSET,
     DEFAULT_DURATION,
@@ -50,10 +49,12 @@ from constants_utils import (
     DEFAULT_SUMMON_VALUES,
 )
 
+TARGET_CHAIN = os.getenv("TARGET_CHAIN", "0x2105")
+
 # internal summon helper functions
     
 
-def assemble_yeeter_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, chain_id = DEFAULT_CHAIN_ID):
+def assemble_yeeter_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, chain_id = TARGET_CHAIN):
     """
     Assembles the transaction arguments for meme summoner.
 
@@ -167,7 +168,7 @@ def governance_config_tx(default_values):
         return encoded
     raise ValueError("Encoding Error")
 
-def token_distro_tx(member_address, token_amount, chain_id = DEFAULT_CHAIN_ID):
+def token_distro_tx(member_address, token_amount, chain_id = TARGET_CHAIN):
 
     encoded = encode_function(baal_abi, "mintShares", [member_address], [token_amount])
     if is_string(encoded):
@@ -209,7 +210,7 @@ def metadata_config_tx(image, description, calculated_dao_address, dao_name, mem
 
 
 def assemble_token_params(dao_name: str = DEFAULT_DAO_PARAMS.get("NAME"), token_symbol: str = DEFAULT_DAO_PARAMS.get("SYMBOL")):
-    share_singleton = SUMMON_CONTRACTS["DH_TOKEN_SINGLETON"].get(DEFAULT_CHAIN_ID)
+    share_singleton = SUMMON_CONTRACTS["DH_TOKEN_SINGLETON"].get(TARGET_CHAIN)
     
     if not share_singleton:
         print("ERROR: passed args")
@@ -224,7 +225,7 @@ def assemble_token_params(dao_name: str = DEFAULT_DAO_PARAMS.get("NAME"), token_
     return encode_values(["address", "bytes"], [share_singleton, share_params])
 
 
-def assemble_yeeter_shaman_params(price, multiplier, member_address, start_date, chain_id = DEFAULT_CHAIN_ID):
+def assemble_yeeter_shaman_params(price, multiplier, member_address, start_date, chain_id = TARGET_CHAIN):
     yeeter_shaman_singleton = SUMMON_CONTRACTS["YEETER_SINGLETON"].get(chain_id)
 
 
@@ -290,7 +291,7 @@ def assemble_yeeter_shaman_params(price, multiplier, member_address, start_date,
     )
 
 
-def calculate_dao_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
+def calculate_dao_address(salt_nonce: int, chain_id = TARGET_CHAIN):
     yeet24_summoner = SUMMON_CONTRACTS["YEET24_SUMMONER"].get(chain_id, "0x0000000000000000000000000000000000000000")
     
     if not is_eth_address(yeet24_summoner):
@@ -311,7 +312,7 @@ def calculate_dao_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
 
     return Web3.to_checksum_address(expected_dao_address)
 
-def calculate_create_proxy_with_nonce_address(salt_nonce, chain_id = DEFAULT_CHAIN_ID):
+def calculate_create_proxy_with_nonce_address(salt_nonce, chain_id = TARGET_CHAIN):
     gnosis_safe_proxy_factory_address = SUMMON_CONTRACTS["GNOSIS_SAFE_PROXY_FACTORY"].get(chain_id, "0x0000000000000000000000000000000000000000")
     master_copy_address = SUMMON_CONTRACTS["GNOSIS_SAFE_MASTER_COPY"].get(chain_id)
     initializer = "0x"

@@ -4,17 +4,19 @@ import json
 from decimal import Decimal
 from typing import Union
 
-from cdp.errors import UnsupportedAssetError
-from cdp import Cdp, Wallet
 from openai import OpenAI
 from swarm import Agent
 from web3 import Web3
 from web3.exceptions import ContractLogicError
+from eth_account import Account
+
+
 from farcaster_utils import FarcasterBot
 from graph_utils import DaohausGraphData
 from image_utils import ImageThumbnailer
 from memory_retention_utils import MemoryRetention
 
+from dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_address, assemble_yeeter_summoner_args
 
 # Load the ENS registrar and resolver ABIs
 with open("abis/registrar_abi.json", "r") as abi_file:
@@ -29,11 +31,9 @@ with open("abis/yeet24_hos_summoner_abi.json", "r") as abi_file:
 with open("abis/gnosis_multisend_abi.json", "r") as abi_file:
     gnosis_multisend_abi = json.load(abi_file)
 
-from dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_address, assemble_yeeter_summoner_args
 
 from constants_utils import (
     SUMMON_CONTRACTS,
-    DEFAULT_CHAIN_ID,
 )
 
 
@@ -41,31 +41,30 @@ from dotenv import dotenv_values
 
 config = dotenv_values(".env")
 
-# Get configuration from environment variables
-API_KEY_NAME = os.getenv("CDP_API_KEY_NAME")
-PRIVATE_KEY = os.getenv("CDP_PRIVATE_KEY", "").replace('\\n', '\n')
+PRIVATE_KEY = os.getenv("AGENT_PRIVATE_KEY", "").replace('\\n', '\n')
+TARGET_CHAIN = os.getenv("TARGET_CHAIN", "0x2105")
 
-# Configure CDP with environment variables
-Cdp.configure(API_KEY_NAME, PRIVATE_KEY)
+if not PRIVATE_KEY:
+    raise EnvironmentError("The environment variable 'PRIVATE_KEY' is not set.")
 
-# 1. Fetch the wallet by ID
-# Get the environment variable
-target_agent_wallet_id = os.getenv("TARGET_AGENT_WALLET_ID")
+# Initialize Web3 (connect to Ethereum network, e.g., Infura or local node)
+WEB3_PROVIDER_URI = os.getenv("WEB3_PROVIDER_URI")
+print(f"Connecting to Web3 provider: {WEB3_PROVIDER_URI}")
+if not WEB3_PROVIDER_URI:
+    raise EnvironmentError("The environment variable 'WEB3_PROVIDER_URI' is not set.")
 
-# Check if the environment variable exists
-if target_agent_wallet_id is None:
-    raise EnvironmentError("The environment variable 'TARGET_AGENT_WALLET_ID' is not set. You can generate one with `run create_wallet.py`.")
+w3 = Web3(Web3.HTTPProvider(WEB3_PROVIDER_URI))
 
-agent_wallet = Wallet.fetch(os.getenv("TARGET_AGENT_WALLET_ID")) # mainnet
+# Ensure Web3 connection is established
+if not w3.is_connected():
+    raise ConnectionError("Web3 provider connection failed.")
 
-# 2. Load the saved seed
-agent_wallet.load_seed("base_wallet_seed.json")
+# Load the wallet
+agent_wallet = Account.from_key(PRIVATE_KEY)
 
+# Print wallet details
+print(f"Wallet Address: {agent_wallet.address}")
 
-# Request funds from the faucet (only works on testnet)
-# faucet = agent_wallet.faucet()
-# print(f"Faucet transaction: {faucet}")
-# print(f"Agent wallet address: {agent_wallet.default_address.address_id}")
 
 # Function to get the balance of a specific asset
 def get_balance(asset_id):
@@ -144,10 +143,10 @@ def generate_art(prompt):
 # functions to interact with daos
 def vote_on_dao_proposal(proposal_id: str, vote: bool) -> str:
     """
-    Summon a DAO.
+    Vote on a DAO proposal.
 
     Args:
-        proposal_id (int): The proposal ID.
+        proposal_id (str): The proposal ID.
         vote (bool): The vote.
 
     Returns:
@@ -158,27 +157,45 @@ def vote_on_dao_proposal(proposal_id: str, vote: bool) -> str:
         return "Invalid input types"
 
     try:
+        # Convert proposal_id to integer if necessary
+        proposal_id_int = int(proposal_id)
 
-        args_dict = {
-            "id": proposal_id,
-            "approved": vote,
-        }
+        # Load the DAO contract
+        dao_contract = w3.eth.contract(address=Web3.to_checksum_address(dao_address), abi=baal_abi)
 
-        invocation = agent_wallet.invoke_contract(
-            contract_address=dao_address,
-            method="submitVote",
-            args=args_dict,
-            abi=baal_abi,
-            # amount=amount,
-            # asset_id="eth",
-        )
-        invocation.wait()
-        return f"Successfully voted on proposal id {proposal_id} for dao address {dao_address}"
+        # Get the current gas price
+        gas_price = w3.eth.gas_price  # Automatically fetches the current network gas price
 
+        # Estimate the gas required for the transaction
+        try:
+            estimated_gas = dao_contract.functions.submitVote(proposal_id_int, vote).estimate_gas({
+                "from": agent_wallet.address,
+            })
+        except Exception as e:
+            return f"Error estimating gas: {str(e)}"
+
+        # Prepare transaction
+        tx = dao_contract.functions.submitVote(proposal_id_int, vote).build_transaction({
+            "from": agent_wallet.address,
+            "nonce": w3.eth.get_transaction_count(agent_wallet.address),
+            "gas": estimated_gas,
+            "gasPrice": gas_price,
+        })
+
+        # Sign transaction
+        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+
+        # Send transaction
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+        # Wait for transaction receipt
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+        return f"Successfully voted on proposal id {proposal_id} for dao address {dao_address}, tx hash: {tx_hash.hex()}"
 
     except Exception as e:
         return f"Error Voting in DAO: {str(e)}"
-    
+
 def summon_meme_token_dao(dao_name, token_symbol, image, description, agent_wallet_address):
     """
     Summon a meme token DAO.
@@ -186,7 +203,7 @@ def summon_meme_token_dao(dao_name, token_symbol, image, description, agent_wall
     Args:
         dao_name (str): Name of the DAO.
         token_symbol (str): Token symbol for the DAO.
-        image (str): Image URL for the dao avatar
+        image (str): Image URL for the DAO avatar.
         description (str): Description of the DAO.
         agent_wallet_address (str): Address of the agent wallet.
 
@@ -195,8 +212,7 @@ def summon_meme_token_dao(dao_name, token_symbol, image, description, agent_wall
     """
     try:
         # Assemble arguments for summoning the DAO
-        summon_args = assemble_meme_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, DEFAULT_CHAIN_ID)
-
+        summon_args = assemble_meme_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, TARGET_CHAIN)
 
         initialization_loot_token_params = summon_args[0]
         initialization_share_token_params = summon_args[1]
@@ -209,26 +225,59 @@ def summon_meme_token_dao(dao_name, token_symbol, image, description, agent_wall
             "initializationShareTokenParams": Web3.to_hex(initialization_share_token_params),
             "initializationShamanParams": Web3.to_hex(initialization_shaman_params),
             "postInitializationActions": post_initialization_actions,
-            "saltNonce": str(salt_nonce),
+            "saltNonce": salt_nonce,
         }
 
-        print("Summoning DAO with...", SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID])
+        # Load the summoner contract
+        summoner_address = SUMMON_CONTRACTS['YEET24_SUMMONER'][TARGET_CHAIN]
+        summoner_contract = w3.eth.contract(address=Web3.to_checksum_address(summoner_address), abi=yeet24_hos_summoner_abi)
 
-        # Invoke the contract
-        summon_invocation = agent_wallet.invoke_contract(
-            contract_address=SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID],
-            method="summonBaalFromReferrer",
-            args=summon_args_dict,
-            abi=yeet24_hos_summoner_abi,
-            amount=None,
-            asset_id="eth",
-        )
-        summon_invocation.wait()
+        try:
+            estimated_gas = summoner_contract.functions.summonBaalFromReferrer(
+                summon_args_dict["initializationLootTokenParams"],
+                summon_args_dict["initializationShareTokenParams"],
+                summon_args_dict["initializationShamanParams"],
+                summon_args_dict["postInitializationActions"],
+                summon_args_dict["saltNonce"]
+            ).estimate_gas({
+                "from": agent_wallet.address,
+            })
+            print(f"Estimated gas: {estimated_gas}")
+        except Exception as e:
+            return f"Error estimating gas: {str(e)}"
+        # Build the transaction
+        tx = summoner_contract.functions.summonBaalFromReferrer(
+            summon_args_dict["initializationLootTokenParams"],
+            summon_args_dict["initializationShareTokenParams"],
+            summon_args_dict["initializationShamanParams"],
+            summon_args_dict["postInitializationActions"],
+            summon_args_dict["saltNonce"]
+        ).build_transaction({
+            "from": agent_wallet.address,
+            "nonce": w3.eth.get_transaction_count(agent_wallet.address),
+            "gas": estimated_gas,
+            "gasPrice": w3.eth.gas_price,
+        })
 
-        return f"Successfully summoned DAO {calculate_dao_address(salt_nonce)} you can view at https://speedball.daohaus.club/"
+        # Sign the transaction
+        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+
+        # Send the transaction
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+
+        # Wait for the transaction receipt
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+        # Return success message
+        dao_address = calculate_dao_address(salt_nonce)
+        return f"Successfully summoned DAO {dao_address}. You can view it at https://speedball.daohaus.club/"
 
     except Exception as e:
-        return f"Error summoning DAO: {str(e)}"
+        # Truncate or simplify the error message
+        error_message = str(e)
+        truncated_message = error_message[:200] + "..." if len(error_message) > 200 else error_message
+        return f"Error summoning DAO: {truncated_message}"
+
     
 def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_eth_addresses):
     """
@@ -246,7 +295,7 @@ def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_e
     """
     try:
         # Assemble arguments for summoning the DAO
-        summon_args = assemble_yeeter_summoner_args(dao_name, token_symbol, image, description, verified_eth_addresses, DEFAULT_CHAIN_ID)
+        summon_args = assemble_yeeter_summoner_args(dao_name, token_symbol, image, description, verified_eth_addresses, TARGET_CHAIN)
 
 
         initialization_loot_token_params = summon_args[0]
@@ -265,22 +314,50 @@ def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_e
 
         print("Summoning crowdfund DAO at https://yeet.haus/ on Base...")
 
+        # Load the summoner contract
+        summoner_address = SUMMON_CONTRACTS['YEET24_SUMMONER'][TARGET_CHAIN]
+        summoner_contract = w3.eth.contract(address=Web3.to_checksum_address(summoner_address), abi=yeet24_hos_summoner_abi)
 
-        # Invoke the contract
-        summon_invocation = agent_wallet.invoke_contract(
-            contract_address=SUMMON_CONTRACTS['YEET24_SUMMONER'][DEFAULT_CHAIN_ID],
-            method="summonBaalFromReferrer",
-            args=summon_args_dict,
-            abi=yeet24_hos_summoner_abi,
-            amount=None,
-            asset_id="eth",
-        )
+        try:
+            estimated_gas = summoner_contract.functions.summonBaalFromReferrer(
+                summon_args_dict["initializationLootTokenParams"],
+                summon_args_dict["initializationShareTokenParams"],
+                summon_args_dict["initializationShamanParams"],
+                summon_args_dict["postInitializationActions"],
+                summon_args_dict["saltNonce"]
+            ).estimate_gas({
+                "from": agent_wallet.address,
+            })
+            print(f"Estimated gas: {estimated_gas}")
+        except Exception as e:
+            return f"Error estimating gas: {str(e)}"
+        # Build the transaction
+        tx = summoner_contract.functions.summonBaalFromReferrer(
+            summon_args_dict["initializationLootTokenParams"],
+            summon_args_dict["initializationShareTokenParams"],
+            summon_args_dict["initializationShamanParams"],
+            summon_args_dict["postInitializationActions"],
+            summon_args_dict["saltNonce"]
+        ).build_transaction({
+            "from": agent_wallet.address,
+            "nonce": w3.eth.get_transaction_count(agent_wallet.address),
+            "gas": estimated_gas,
+            "gasPrice": w3.eth.gas_price,
+        })
 
-        summon_invocation.wait()
+        # Sign the transaction
+        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
 
+        # Send the transaction
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
 
+        # Wait for the transaction receipt
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 
-        return f"Successfully summoned DAO {calculate_dao_address(salt_nonce)}"
+        # Return success message
+        dao_address = calculate_dao_address(salt_nonce)
+        return f"Successfully summoned DAO {dao_address}. You can view it at https://yeet.haus"
+
 
     except Exception as e:
         return f"Error summoning DAO: {str(e)}"
@@ -300,45 +377,53 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
         str: Success or error message.
     """
     dao_address = os.getenv("TARGET_DAO")
-
     if not isinstance(dao_address, str) or not isinstance(proposal_title, str):
         return "Invalid input types"
-    
+
+    # Prepare the proposal details
     proposal_details = {
-    "title": proposal_title,
-    "description": proposal_description,
-    "contentURI": proposal_link,
-    "contentURIType": {"type": "static", "value": "url"},
-    "proposalType": {"type": "static", "value": "Signal"},  
+        "title": proposal_title,
+        "description": proposal_description,
+        "contentURI": proposal_link,
+        "contentURIType": {"type": "static", "value": "url"},
+        "proposalType": {"type": "static", "value": "SIGNAL"},
     }
 
     proposal = json.dumps(proposal_details)
 
-
     try:
+        # Load the DAO contract
+        dao_contract = w3.eth.contract(address=Web3.to_checksum_address(dao_address), abi=baal_abi)
 
-        args_dict = {
-            "proposalData": "",
-            "expiration": "0",
-            "baalGas": "0",
-            "details": proposal
-        }
+        # Prepare transaction arguments
+        tx = dao_contract.functions.submitProposal(
+            "",              # proposalData (empty string as per the original args_dict)
+            "0",             # expiration (default is "0")
+            "0",             # baalGas (default is "0")
+            proposal         # details (the serialized proposal details)
+        ).build_transaction({
+            "from": agent_wallet.address,
+            "nonce": w3.eth.get_transaction_count(agent_wallet.address),
+            "gas": 300000,  # Adjust based on actual gas requirements
+            "gasPrice": w3.eth.gas_price,  # Dynamic gas price
+        })
 
-        invocation = agent_wallet.invoke_contract(
-            contract_address=dao_address,
-            method="submitProposal",
-            args=args_dict,
-            abi=baal_abi,
-            # amount=amount,
-            # asset_id="eth",
-        )
-        invocation.wait()
-        
-        return f"Successfully submitted proposal for dao address {dao_address}."
+        # Sign the transaction
+        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
 
+        # Send the transaction
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+
+        # Wait for receipt
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+        return f"Successfully submitted proposal for DAO address {dao_address}. Transaction hash: {tx_hash.hex()}"
 
     except Exception as e:
-        return f"Error Submitting Proposal in DAO: {str(e)}"
+        error_message = str(e)
+        truncated_message = error_message[:200] + "..." if len(error_message) > 200 else error_message
+        return f"Error Submitting Proposal in DAO: {truncated_message}"
+
     
 def get_dao_proposals() -> str:
     """
@@ -547,11 +632,11 @@ def get_memory_count():
 
 # Create the Based Agent with all available functions
 
-print("Creating Based Agent...")
+print("Creating Agent...")
 
-def based_agent(instructions: str ): 
+def dao_agent(instructions: str ): 
     return Agent(
-    name="Based Agent",
+    name="Agent",
     instructions=instructions,
     functions=[
         get_balance,

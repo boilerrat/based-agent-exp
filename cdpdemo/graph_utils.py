@@ -11,10 +11,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 from constants_utils import (
-    DEFAULT_CHAIN_ID
+    DAOHAUS_GRAPH_URLS
     )
+
+TARGET_CHAIN = os.getenv("TARGET_CHAIN", "0x2105")
+GRAPH_URL = "https://gateway-arbitrum.network.thegraph.com/api/" + os.getenv("GRAPH_KEY") + DAOHAUS_GRAPH_URLS[TARGET_CHAIN]
+
 
 class DaohausGraphData:
     def __init__(self):
@@ -29,9 +32,7 @@ class DaohausGraphData:
         self.sg = Subgrounds()
 
         # Load the subgraph
-        self.dh_v3 = self.sg.load_subgraph(
-            "https://gateway-arbitrum.network.thegraph.com/api/" + os.getenv("GRAPH_KEY") + "/subgraphs/id/7yh4eHJ4qpHEiLPAk9BXhL5YgYrTrRE6gWy8x4oHyAqW"
-        )
+        self.dh_v3 = self.sg.load_subgraph(GRAPH_URL)
 
         self.dao_id = os.getenv("TARGET_DAO")
 
@@ -256,5 +257,5 @@ class DaohausGraphData:
         Returns:
             str: The URL
         """
-        return f"https://admin.daohaus.fun/#/molochV3/{DEFAULT_CHAIN_ID}/{self.dao_id}/proposal/{proposal_id}"
+        return f"https://admin.daohaus.fun/#/molochV3/{TARGET_CHAIN}/{self.dao_id}/proposal/{proposal_id}"
         
