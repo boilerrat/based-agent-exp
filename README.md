@@ -68,6 +68,7 @@ Refer to the documentation of respective services to generate these keys.
 
 
 ### 5. Create a Wallet
+cd into dao-agent-demo
 Run the wallet creation script to set up a new wallet if you didn't bring your own:
 ```bash
 python create_wallet.py
