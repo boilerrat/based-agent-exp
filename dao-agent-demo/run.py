@@ -4,7 +4,7 @@ import random
 import sys
 from swarm import Swarm
 from swarm.repl import run_demo_loop
-from agents import based_agent
+from agents import dao_agent
 from openai import OpenAI
 
 from prompt_helpers import set_character_file, get_character_json, get_instructions
@@ -20,7 +20,7 @@ def run_autonomous_loop(agent):
     client = Swarm()
     messages = []
 
-    print("Starting autonomous Based Agent loop...")
+    print("Starting autonomous DAO Agent loop...")
     character_json = get_character_json()
 
     while True:
@@ -56,12 +56,12 @@ def run_autonomous_loop(agent):
 # this is the main loop that runs the agent in two-agent mode
 # you can modify this to change the behavior of the agent
 def run_openai_conversation_loop(agent):
-    """Facilitates a conversation between an OpenAI-powered agent and the Based Agent."""
+    """Facilitates a conversation between an OpenAI-powered agent and the DAO Agent."""
     client = Swarm()
     openai_client = OpenAI()
     messages = []
 
-    print("Starting OpenAI-Based Agent conversation loop...")
+    print("Starting OpenAI-DAO Agent conversation loop...")
 
     # Initial prompt to start the conversation
     openai_messages = [{
@@ -73,7 +73,7 @@ def run_openai_conversation_loop(agent):
         "role":
         "user",
         "content":
-        "Start a conversation with the Based Agent and guide it through some blockchain tasks."
+        "Start a conversation with the DAO Agent and guide it through some blockchain tasks."
     }]
 
     while True:
@@ -84,22 +84,22 @@ def run_openai_conversation_loop(agent):
         openai_message = openai_response.choices[0].message.content
         print(f"\n\033[92mOpenAI Guide:\033[0m {openai_message}")
 
-        # Send OpenAI's message to Based Agent
+        # Send OpenAI's message to DAO Agent
         messages.append({"role": "user", "content": openai_message})
         response = client.run(agent=agent, messages=messages, stream=True)
         response_obj = process_and_print_streaming_response(response)
 
-        # Update messages with Based Agent's response
+        # Update messages with DAO Agent's response
         messages.extend(response_obj.messages)
 
-        # Add Based Agent's response to OpenAI conversation
-        based_agent_response = response_obj.messages[-1][
-            "content"] if response_obj.messages else "No response from Based Agent."
+        # Add DAO Agent's response to OpenAI conversation
+        dao_agent_response = response_obj.messages[-1][
+            "content"] if response_obj.messages else "No response from DAO Agent."
         openai_messages.append({
             "role":
             "user",
             "content":
-            f"Based Agent response: {based_agent_response}"
+            f"DAO Agent response: {dao_agent_response}"
         })
 
         # Check if user wants to continue
@@ -196,9 +196,9 @@ def main():
     print(instructions)
 
     mode_functions = {
-        'chat': lambda: run_demo_loop(based_agent(instructions)),
-        'auto': lambda: run_autonomous_loop(based_agent(instructions)),
-        'two-agent': lambda: run_openai_conversation_loop(based_agent(instructions))
+        'chat': lambda: run_demo_loop(dao_agent(instructions)),
+        'auto': lambda: run_autonomous_loop(dao_agent(instructions)),
+        'two-agent': lambda: run_openai_conversation_loop(dao_agent(instructions))
     }
 
     print(f"\nStarting {mode} mode...")
@@ -212,5 +212,5 @@ if __name__ == "__main__":
     else:
         character_file_path = "default_character_data.json"
         set_character_file(character_file_path)
-    print(f"Starting Based Agent ({character_file_path})...")
+    print(f"Starting DAO Agent ({character_file_path})...")
     main()

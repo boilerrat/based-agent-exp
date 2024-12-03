@@ -1,6 +1,128 @@
-# fork of 🔵 Based Agent for DAOs
+# DAO AI Agent Local Setup
 
-An experimental playground for autonomous onchain interactions, and the starting point of the autonomous onchain agent revolution. 
+This guide outlines the steps to set up a local development environment for an AI agent that interacts with Warpcast, the Graph, and DAOs on EVM chains.
+
+---
+
+## Prerequisites
+1. **Virtual Environment (VM):** Ensure you have Python and a virtual environment tool installed.
+2. **Poetry:** Dependency management tool for Python.
+3. **API Keys:**
+   - OpenAI Pro account https://openai.com/index/openai-api/
+   - New Warpcast account for your agent
+   - NANAR API account https://dev.neynar.com/
+   - The Graph API account https://thegraph.com/studio
+4. **RPC:** Use a local node or a service like Infura, Alchemy or a free/public RPC for EVM interactions.
+
+---
+
+## Setup Steps
+
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd <repository-folder>
+```
+
+### 2. Set Up a Virtual Environment
+```bash
+python3 -m venv my-venv
+source my-venv/bin/activate  # For Linux/Mac
+```
+
+## install poetry
+```
+pip3 install poetry
+```
+
+### 3. Install Dependencies with Poetry
+```bash
+poetry install
+```
+
+This installs libraries for interacting with OpenAI, and other required tools.
+
+### 4. Configure `.env` File
+Create a `.env` file and fill in the following keys:
+- `OPENAI_API_KEY` create key at https://openai.com/index/openai-api/
+- `FARCASTER_FID` can get this from the api page https://docs.neynar.com/reference/lookup-user-by-username
+- `FARCASTER_CHANNEL_ID` this is the current default channel for testing (optional)
+- `NANAR_API_KEY` can get key at https://dev.neynar.com/
+- `NAYNAR_SIGNER_UUID` need to create this from the naynar dev dashboard
+- `GRAPH_KEY` can get from https://thegraph.com/studio
+- `WEB3_PROVIDER_URI`
+- `TARGET_CHAIN` chain id of the target EVM chain
+
+agent wallet data (can use create_wallet.py for a new one)
+- `AGENT_MNEMONIC`
+- `AGENT_PRIVATE_KEY`
+- `AGENT_ADDR`
+
+If working with a DAO for voting and proposals (currently on a single dao is supported)
+- `TARGET_DAO`
+
+currently using imgbb for more persistent image hosting
+- `IMG_BB_API_KEY`
+
+Refer to the documentation of respective services to generate these keys.
+
+
+### 5. Create a Wallet
+Run the wallet creation script to set up a new wallet if you didn't bring your own:
+```bash
+python create_wallet.py
+```
+
+This generates a new account and mnemonic. Add these values to the `.env` file.
+
+### 6. Fund the Wallet
+If interacting on-chain, fund the wallet with a small amount of eth for gas fees.
+
+---
+
+## Running the Agent
+
+### Start the Agent
+
+cd into dao-agent-demo
+
+```bash
+python run.py
+```
+or to load a character
+```bash
+python run.py <character file json>
+```
+Options available:
+1. **Chat Mode:** Directly chat with the agent for tasks like generating proposals or interacting with DAOs.
+2. **Autonomous Mode:** The agent operates autonomously, performing actions like replying on Warpcast, creating proposals, or notifying about updates.
+3 **2 agent demo:** demo of 2 agents simulating a conversation
+
+### Customize Agent Behavior
+Modify the `characters` folder to define:
+- **Identity and initial prompt** in JSON files.
+- **Autonomous thoughts** for periodic actions.
+
+---
+
+## Key Files and Utilities
+- **`agent.py`:** Core functions for the agent.
+- **`constants_utils.py`:** Contract addresses and configurations.
+- **`helpers and utils`:** Includes DAO summoning tools, Warpcast, and Graph, json store utility wrappers.
+- **`run.py`:** Handles agent initialization and interval control for autonomous actions.
+- **`characters/`:** json files that define initial prompts and auto thoughts for agents
+
+---
+
+## Additional Notes
+- **Intervals:** The autonomous mode executes random actions every 5 to 60 minutes by default. This can be adjusted in `run.py`.
+- **Memory Management:** There is a tinydb json store for committing memories, use this to avoid repetitive tasks
+
+---
+
+For detailed configuration or additional features, refer to the helper files and modify as needed.
+
+
 
 > this is a repo to experiment on stuff, not for production use
 
@@ -11,49 +133,25 @@ walkthrough loom: https://www.loom.com/share/2094a79bfd71452894e1cd98280d0292?si
 
 ## Introduction
 
-Based Agent helps LLM agents directly interact with the blockchain, built on top of the [Coinbase Developer Platform (CDP)](https://cdp.coinbase.com/) and OpenAI's [Swarm](https://github.com/openai/swarm). This is meant to be a template where anyone can add their own features and functions that can be autonomously executed by an agent with access to the entire onchain ecosystem.
+This is a simple lightweight framework to interact with agents using openai swarm  [Documentation](https://github.com/openai/swarm). There are several example functions to summon, interact and retrieve info from DAOs. There are farcaster tools to cast and retrieve casts. This was originally based on the Based Agent playground [Repo](https://github.com/murrlincoln/Based-Agent/tree/main/Based-Agent)
 
 ### Key Features
 
 - **Autonomous execution**: The agent thinks, decides, and acts onchain autonomously.
-- **Token deployement**: Create and manage ERC-20 tokens.
-- **NFT Deployment**: Deploy and mint NFTs. 
-- **Asset transfers**: Transfer assets between addresses without manual intervention.
+- **Token deployement**: Creates a presale token with fee ditributions to refferers
 - **Balance checks**: Keep tabs on wallet balances.
-- **ETH faucet requests**: Automatically request testnet ETH when needed.
+- **Crowd fund deployment**: Can deploy a yeeter crowdfund.
 - **Art generation via DALL-E**: Generate artwork using AI.
 - **Whatever you want**: Add in features and share them with us!
-
-### Why BasedAgent?
-
-Imagine an AI agent that not only interacts with the blockchain but does so creatively and autonomously. Whether you're a developer, an artist, or someone curious about AI, Based Agent offers a unique and exciting playground to:
-
-- Experiment with autonomous agent capabilities.
-- Explore on-chain actions without manual coding.
-- Understand the potential of AI onchain.
 
 ## Get Started in Minutes!
 
 ### 1️⃣ Prerequisites
 - Python 3.7+
 
-### 2️⃣ API Configuration
-Create a .env file for these variables:
-- `CDP_API_KEY_NAME`: Your CDP API key name.
-- `CDP_PRIVATE_KEY`: Your CDP private key.
-- `OPENAI_API_KEY`: Your OpenAI API key.
 
-to use farcaster
-- `FARCASTER_FID`
-- `NAYNAR_API_KEY`
-- `NAYNAR_SIGNER_UUID`
 
-might need this
-- `BASE_RPC`=
-
-**CDP**
-You can get the Coinbase Developer Platform API key here: [https://portal.cdp.coinbase.com/](https://portal.cdp.coinbase.com/projects/api-keys)
-And the OpenAI key here: https://platform.openai.com/api-keys (note you will need to have a paid account)
+## Other Info
 
 **NAYNAR farcaster api**
 Sign up for a Naynar api key
@@ -69,56 +167,9 @@ Here are a few example endpoints
 ### 3️⃣ Running the Agent
 Create a new python venv. You will need pip and poetry installed
 
-```bash
-sudo apt install python3-venv
-
-python3 -m venv my-env
-
-```
-
-make sure venv is activated and run poetry 
-```bash
-source my-env/bin/activate
-
-pip3 install poetry
-
-poetry install
-```
-
-**first time running** if this is your first time running and you do not have a wallet seed file you can create one with (you will need to add these values to your env)
-```bash
-python create_wallet.py
-```
-
-from cdpdemo run the python script. json file example: default_character_data.json
-```bash
-python run.py <json file name>
-```
-> note CDP error happened on build
-
-> See the comments in agents.py about creating a persistent agent with a wallet seed file.
-> for mainnet-base you will need to fund the agent wallet with some gas money
-
 ### Customize Character
 You can edit the character by creating your own character json file in the /characters folder
 
-### Watch the Magic Happen! ✨
-
-The Based Agent will start its autonomous loop:
-
-- Wakes up every 10 seconds.
-- Chooses an onchain action based on its capabilities.
-- Executes the action onchain.
-- Prints results in a human-readable format.
-
-## 🤔 How Does BasedAgent Work?
-
-Based Agent makes decisions and interacts with the blockchain autonomously. Here's what happens under the hood:
-
-- **Decision making**: The agent decides what action to perform next.
-- **Onchain interaction**: Executes blockchain transactions using the CDP SDK.
-- **Art generation**: If needed, generates art using OpenAI's DALL-E.
-- **Feedback loop**: Analyzes results and plans the next action.
 
 ## 🔧 Available Functions
 
@@ -148,69 +199,22 @@ Unlock a world of possibilities with these built-in functions:
 
 - `generate_art(prompt)`: Generate art using DALL-E based on a text prompt.
 - `get_agent_address`: get the address of the current agent
-
-### Advanced (Experimental)
-
-- `create_liquidity_pool(token0_address, token1_address, fee_tier, amount0, amount1)`: Create a Uniswap V3 liquidity pool and add initial liquidity.
+- `commit_memory`: store a memory for long term
 
 ## 🤖 Agent Functionality
 
 ### Agents.py
-All of the functionality for the Based Agent resides within `agents.py`. This is the central hub where you can add new capabilities, allowing the agent to perform a wide range of tasks. 
+All of the functionality for the DAO Agent resides within `agents.py`. This is the central hub where you can add new capabilities, allowing the agent to perform a wide range of tasks. 
 
-Using the CDP SDK, the agent is equipped to interact with any arbitrary on-chain activity or function. 
-
-By incorporating additional libraries, you can extend the agent's reach beyond blockchain interactions to include Web2 functionalities, such as posting on X, etc.
-
-### Run.py
-Within `run.py`, you have the flexibility to engage the agent in various ways:
-1. **Chat-Based Communication**: This mode enables you to have a natural language conversation with the agent, allowing it to execute tasks on your behalf through Natural Language Processing (NLP).
-2. **One-Agent Autonomous Mode**: In this mode, provide the agent with a static prompt, and it will execute tasks based on its internal decision-making processes and predefined capabilities.
-3. **Two-Agent Autonomous Mode**: Here, the setup involves another instance of communication, where a second agent provides dynamic prompting to the primary agent. This setup allows more complex interactions and task executions, providing an exciting opportunity to explore how agents can work together and autonomously.
+By incorporating additional libraries, you can extend the agent's reach beyond blockchain interactions to include Web2 functionalities, such as posting on Warpcast, etc.
 
 ## 🤖 Behind the Scenes
 
-Based Agent uses:
+DAO Agent uses:
 
-- **Coinbase Developer Platform SDK**: For seamless onchain interactions.
 - **OpenAI Swarm**: Powers the agent's autonomous decision-making.
-- **DALL-E**: Generates art from textual descriptions.
 
-## Next Steps
-- Feel free to fork this repl, and remix or extend it.  You may wish to add a front-end, more function calls, or any other functionality that may be desired.
 
 ## ⚠️ Disclaimer
 
 This project is for educational purposes only. Do not use with real assets or in production environments. Always exercise caution when interacting with blockchain technologies.
-
-## 🙌 Contributing
-
-We welcome contributions! If you have ideas, suggestions, or find issues, feel free to:
-
-- Open an issue on our main GitHub repository: [Swarm-CDP-SDK](https://github.com/murrlincoln/Swarm-CDP-SDK).
-- Submit a pull request with your enhancements.
-
-## 🤞 Contact & Support
-
-Have questions or need assistance?
-
-- **Lincoln Murr**: [lincoln.murr@coinbase.com](mailto:lincoln.murr@coinbase.com)
-- **Kevin Leffew**: [kevin@replit.com](mailto:kevin@replit.com)
-
-## 📚 Additional Resources
-
-- **Coinbase Developer Platform**: [Documentation]([https://developers.coinbase.com](https://portal.cdp.coinbase.com/projects/api-keys))
-- **OpenAI Swarm**: [Learn More](https://www.openai.com)
-- **Base**: [Explore Base](https://base.org)
-
-## ❤️ Acknowledgements
-
-Based Agent is made possible thanks to:
-
-- **Coinbase Developer Platform SDK**: [Documentation](https://docs.cdp.coinbase.com/cdp-apis/docs/welcome)
-- **OpenAI Swarm (experimental)**: [Documentation](https://github.com/openai/swarm)
-- **Community Contributors**
-
-Unleash the power of AI on the blockchain with BasedAgent! 🚀
-
-Happy Building! 👩‍💻👨‍💻

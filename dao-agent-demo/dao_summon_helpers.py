@@ -39,7 +39,6 @@ with open("abis/safe_L2_abi.json", "r") as abi_file:
 
 from constants_utils import (
     SUMMON_CONTRACTS,
-    DEFAULT_CHAIN_ID,
     DEFAULT_DAO_PARAMS,
     DEFAULT_START_DATE_OFFSET,
     DEFAULT_DURATION,
@@ -50,9 +49,11 @@ from constants_utils import (
     DEFAULT_SUMMON_VALUES,
 )
 
+TARGET_CHAIN = os.getenv("TARGET_CHAIN", "0x2105")
+
 # internal summon helper functions
 
-def assemble_yeeter_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, chain_id = DEFAULT_CHAIN_ID):
+def assemble_yeeter_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, chain_id = TARGET_CHAIN):
     """
     Assembles the transaction arguments for meme summoner.
 
@@ -126,7 +127,7 @@ def assemble_yeeter_summoner_args(dao_name, token_symbol, image, description, ag
 
     return tx_args
 
-def assemble_yeeter_shaman_params(price, multiplier, member_address, start_date, chain_id = DEFAULT_CHAIN_ID):
+def assemble_yeeter_shaman_params(price, multiplier, member_address, start_date, chain_id = TARGET_CHAIN):
     yeeter_shaman_singleton = SUMMON_CONTRACTS["YEETER_SINGLETON"].get(chain_id)
 
 
@@ -204,7 +205,7 @@ def assemble_yeeter_init_actions(image, description, calculated_dao_address, cal
 
     return init_actions
 
-def token_distro_tx(member_address, token_amount, chain_id = DEFAULT_CHAIN_ID):
+def token_distro_tx(member_address, token_amount, chain_id = TARGET_CHAIN):
 
     encoded = encode_function(baal_abi, "mintShares", [[member_address], [token_amount]])
     if is_string(encoded):
@@ -213,7 +214,7 @@ def token_distro_tx(member_address, token_amount, chain_id = DEFAULT_CHAIN_ID):
 
 # ********************************
 
-def assemble_meme_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, chain_id = DEFAULT_CHAIN_ID):
+def assemble_meme_summoner_args(dao_name, token_symbol, image, description, agent_wallet_address, chain_id = TARGET_CHAIN):
     """
     Assembles the transaction arguments for meme summoner.
 
@@ -398,7 +399,7 @@ def shaman_module_config_tx(calculated_shaman_address, calculated_treasury_addre
 
 
 def assemble_token_params(dao_name: str = DEFAULT_DAO_PARAMS.get("NAME"), token_symbol: str = DEFAULT_DAO_PARAMS.get("SYMBOL")):
-    share_singleton = SUMMON_CONTRACTS["DH_TOKEN_SINGLETON"].get(DEFAULT_CHAIN_ID)
+    share_singleton = SUMMON_CONTRACTS["DH_TOKEN_SINGLETON"].get(TARGET_CHAIN)
     
     if not share_singleton:
         print("ERROR: passed args")
@@ -412,7 +413,7 @@ def assemble_token_params(dao_name: str = DEFAULT_DAO_PARAMS.get("NAME"), token_
     
     return encode_values(["address", "bytes"], [share_singleton, share_params])
 
-def assemble_mm_shaman_params(start_date: int = int(time.time()) + DEFAULT_START_DATE_OFFSET, chain_id = DEFAULT_CHAIN_ID):
+def assemble_mm_shaman_params(start_date: int = int(time.time()) + DEFAULT_START_DATE_OFFSET, chain_id = TARGET_CHAIN):
     
     meme_yeeter_shaman_singleton = SUMMON_CONTRACTS["YEET24_SINGLETON"].get(chain_id)
     non_fungible_position_manager = SUMMON_CONTRACTS["UNISWAP_V3_NF_POSITION_MANAGER"].get(chain_id)
@@ -453,7 +454,7 @@ def assemble_mm_shaman_params(start_date: int = int(time.time()) + DEFAULT_START
         "shamanInitParams": meme_yeeter_shaman_params
     }
 
-def assemble_shaman_params(price, multiplier, member_address, calculated_shaman_address, start_date, chain_id = DEFAULT_CHAIN_ID):
+def assemble_shaman_params(price, multiplier, member_address, calculated_shaman_address, start_date, chain_id = TARGET_CHAIN):
     yeeter_shaman_singleton = SUMMON_CONTRACTS["YEETER_SINGLETON"].get(chain_id)
 
 
@@ -539,7 +540,7 @@ def generate_shaman_salt_nonce(baal_address, index, initialize_params, salt_nonc
     )
     return Web3.to_hex(Web3.solidity_keccak(['bytes'], [encoded_values]))
 
-def calculate_meme_shaman_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
+def calculate_meme_shaman_address(salt_nonce: int, chain_id = TARGET_CHAIN):
     yeet24_singleton = SUMMON_CONTRACTS["YEET24_SINGLETON"].get(chain_id, "0x0000000000000000000000000000000000000000")
     yeet24_shaman_summoner = SUMMON_CONTRACTS["YEET24_SUMMONER"].get(chain_id, "0x0000000000000000000000000000000000000000")
 
@@ -549,7 +550,7 @@ def calculate_meme_shaman_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
     if not is_eth_address(yeet24_singleton) or not is_eth_address(yeet24_shaman_summoner):
         raise ValueError("Invalid address")
     
-    w3 = Web3(Web3.HTTPProvider(os.getenv("BASE_RPC")))
+    w3 = Web3(Web3.HTTPProvider(os.getenv("WEB3_PROVIDER_URI")))
 
     # Create contract instance
     hos = w3.eth.contract(address=yeet24_shaman_summoner, abi=yeet24_hos_summoner_abi)
@@ -566,14 +567,14 @@ def calculate_meme_shaman_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
     # print("expectedShamanAddress", expected_shaman_address)
     return Web3.to_checksum_address(expected_shaman_address)
 
-def calculate_dao_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
+def calculate_dao_address(salt_nonce: int, chain_id = TARGET_CHAIN):
     yeet24_summoner = SUMMON_CONTRACTS["YEET24_SUMMONER"].get(chain_id, "0x0000000000000000000000000000000000000000")
     
     if not is_eth_address(yeet24_summoner):
         raise ValueError("Invalid address")
     
     # Create a Web3 instance (Assuming you have an endpoint URL)
-    w3 = Web3(Web3.HTTPProvider(os.getenv("BASE_RPC")))
+    w3 = Web3(Web3.HTTPProvider(os.getenv("WEB3_PROVIDER_URI")))
 
     # Create contract instance
     hos = w3.eth.contract(address=yeet24_summoner, abi=basic_hos_summoner_abi)
@@ -587,7 +588,7 @@ def calculate_dao_address(salt_nonce: int, chain_id = DEFAULT_CHAIN_ID):
 
     return Web3.to_checksum_address(expected_dao_address)
 
-def calculate_create_proxy_with_nonce_address(salt_nonce, chain_id = DEFAULT_CHAIN_ID):
+def calculate_create_proxy_with_nonce_address(salt_nonce, chain_id = TARGET_CHAIN):
     gnosis_safe_proxy_factory_address = SUMMON_CONTRACTS["GNOSIS_SAFE_PROXY_FACTORY"].get(chain_id, "0x0000000000000000000000000000000000000000")
     master_copy_address = SUMMON_CONTRACTS["GNOSIS_SAFE_MASTER_COPY"].get(chain_id)
     initializer = "0x"
@@ -598,7 +599,8 @@ def calculate_create_proxy_with_nonce_address(salt_nonce, chain_id = DEFAULT_CHA
     # Simulating the process to estimate gas and determine expected address
     expected_safe_address = "0x0000000000000000000000000000000000000000"
 
-    w3 = Web3(Web3.HTTPProvider(os.getenv("BASE_RPC")))
+    w3 = Web3(Web3.HTTPProvider(os.getenv("WEB3_PROVIDER_URI")))
+    print("w3...", os.getenv("WEB3_PROVIDER_URI"))
 
     # Create contract instance
     gnosis_safe_proxy_factory = w3.eth.contract(
