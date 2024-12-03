@@ -76,9 +76,7 @@ def get_balance():
     """
     balance = w3.eth.get_balance(agent_wallet.address)
     eth_balance = Web3().from_wei(balance, "ether")
-    
-    print(eth_balance)
-    
+        
     return f"Current eth balance: {eth_balance}"
 
 # Function to get the address of the current agent
