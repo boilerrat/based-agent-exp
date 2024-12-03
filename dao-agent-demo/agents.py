@@ -67,18 +67,19 @@ print(f"Wallet Address: {agent_wallet.address}")
 
 
 # Function to get the balance of a specific asset
-def get_balance(asset_id):
+def get_balance():
     """
-    Get the balance of a specific asset in the agent's wallet.
-    
-    Args:
-        asset_id (str): Asset identifier ("eth", "usdc") or contract address of an ERC-20 token
+    Get the eth balance of a specific asset in the agent's wallet.
     
     Returns:
         str: A message showing the current balance of the specified asset
     """
-    balance = agent_wallet.balance(asset_id)
-    return f"Current balance of {asset_id}: {balance}"
+    balance = w3.eth.get_balance(agent_wallet.address)
+    eth_balance = Web3().from_wei(balance, "ether")
+    
+    print(eth_balance)
+    
+    return f"Current eth balance: {eth_balance}"
 
 # Function to get the address of the current agent
 def get_agent_address():
