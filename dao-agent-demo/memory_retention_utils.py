@@ -35,7 +35,35 @@ class MemoryRetention:
             return "Successfully stored memory"
         except Exception as e:
             return f"Error storing memory: {str(e)}"
-        
+    
+    def query_by_keywords(self, keywords: list[str]) -> str:
+        """
+        Query the TinyDB database for records containing a specific keyword.
+        """
+        db = self.db
+        File = Query()
+
+        # Search for records where the 'keywords' field contains the specified keyword
+        # Aggregate results for all keywords
+        results = []
+        for keyword in keywords:
+            matches = db.search(File.keywords.any(keyword))
+            results.extend(matches)
+        # Remove duplicates (optional, in case multiple keywords match the same record)
+        unique_results = {record['file_name']: record for record in results}.values()
+        response = ""
+        if unique_results:
+            print(f"Found {len(unique_results)} record(s) with keyword '{keywords}':")
+            
+            for record in unique_results:
+                res_file_name = f"File Name: {record['file_name']}"
+                res_keywords = f"Keywords: {record['keywords']}"
+                res_content = f"Content Preview: {record['content']}\n"
+                response += res_file_name + res_keywords + res_content + "\n"
+        else:
+            response = f"No records found with keyword '{keyword}'."
+        return response
+
     def get_all_memories(self) -> List:
         """
         Get all memories

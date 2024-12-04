@@ -118,7 +118,7 @@ Modify the `characters` folder to define:
 ## Additional Notes
 - **Intervals:** The autonomous mode executes random actions every 5 to 60 minutes by default. This can be adjusted in `run.py`.
 - **Memory Management:** There is a tinydb json store for committing memories, use this to avoid repetitive tasks
-
+- **Knowledge:** You can put markdown files in the knowledge folder and run import_knowledge.py to add it to the db 
 ---
 
 For detailed configuration or additional features, refer to the helper files and modify as needed.
