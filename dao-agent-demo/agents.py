@@ -90,21 +90,6 @@ def get_agent_address():
     address = agent_wallet.default_address.address_id
     return f"Current address: {address}"
 
-# Function to request ETH from the faucet (testnet only)
-def request_eth_from_faucet():
-    """
-    Request ETH from the Base Sepolia testnet faucet.
-    
-    Returns:
-        str: Status message about the faucet request
-    """
-    if agent_wallet.network_id == "base-mainnet":
-        return "Error: The faucet is only available on Base Sepolia testnet."
-
-    faucet_tx = agent_wallet.faucet()
-    return f"Requested ETH from faucet. Transaction: {faucet_tx}"
-
-
 # Function to generate art using DALL-E (requires separate OpenAI API key)
 def generate_art(prompt):
     """
@@ -641,7 +626,18 @@ def get_memory_count():
     Get the count of memories
     """
     return memory_retention.get_memory_count()
+def get_knowledge_by_keywords(keywords: str) -> str:
+    """
+    get knowledge content from keywords
+    
+    Args:
+        keywords (str): A list of keywords to search for in the knowledge base.
 
+    Returns:
+        str: a concatenated list of content
+    """
+    print(keywords.strip().split())
+    return memory_retention.query_by_keywords(keywords.strip().split())
 # Create the DAO Agent with all available functions
 
 print("Creating Agent...")
@@ -674,6 +670,7 @@ def dao_agent(instructions: str ):
         summon_crowd_fund_dao,
         commit_memory,
         get_all_memories,
+        get_knowledge_by_keywords
 
     ],
 )
