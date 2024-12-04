@@ -20,6 +20,29 @@ class MemoryRetention:
         print("Initializing local database...")
         self.db = TinyDB('db.json')
 
+    def mark_notification_as_acted(self, notification_hash: str) -> bool:
+        """
+        Mark a notification as acted upon.
+        
+        Args:
+            notification_hash (str): The hash of the notification to mark.
+            
+        Returns:
+            bool: True if successfully marked, False otherwise.
+        """
+        try:
+            # Check if the notification is already marked
+            if self.db.search(Query().hash == notification_hash):
+                print("already marked as acted")
+                return False
+
+            # Add the hash to the database
+            self.db.insert({'hash': notification_hash, 'timestamp': datetime.utcnow().isoformat()})
+            return True
+        except Exception as e:
+            print(f"Error marking notification as acted: {str(e)}")
+            return False
+
     def store_memory(self, memory: Dict) -> str:
         """
         Store a memory
@@ -47,7 +70,7 @@ class MemoryRetention:
         # Aggregate results for all keywords
         results = []
         for keyword in keywords:
-            matches = db.search(File.keywords.any(keyword))
+            matches = db.search(File.keywords.any(keyword.lower()))
             results.extend(matches)
         # Remove duplicates (optional, in case multiple keywords match the same record)
         unique_results = {record['file_name']: record for record in results}.values()
@@ -64,6 +87,20 @@ class MemoryRetention:
             response = f"No records found with keyword '{keyword}'."
         return response
 
+    def get_acted_notifications(self) -> List:
+        """
+        Get all acted notifications
+
+        Returns:
+            List: List of acted notifications
+        """
+        try:
+            query = Query()
+            acted_notifications = self.db.search(query.hash.exists())
+            return acted_notifications
+        except Exception as e:
+            return f"Error getting memories: {str(e)}"
+    
     def get_all_memories(self) -> List:
         """
         Get all memories
@@ -76,7 +113,7 @@ class MemoryRetention:
             return memories
         except Exception as e:
             return f"Error getting memories: {str(e)}"
-    
+
     def get_memories(self, query: Dict) -> List:
         """
         Get memories
