@@ -38,6 +38,7 @@ class FarcasterBot:
         try:
             channel_id = channel_id or os.getenv("FARCASTER_CHANNEL_ID")
             url = self.v2_url + "cast"
+            print("url", url)
             unique_id = str(uuid.uuid4())[:16]
             payload = { 
                 "signer_uuid": os.getenv("NAYNAR_SIGNER_UUID"),
@@ -51,8 +52,9 @@ class FarcasterBot:
                 payload["parent_fid"] = parent_fid
             if channel_id:
                 payload["channel_id"] = channel_id
+            print("payload", payload)
             response = requests.post(url, json=payload, headers=self.headers)
-
+            print("response", response)
             return f"Successfully posted cast with ID: {response.json()['cast']['hash']}"
         except Exception as e:
             return f"Error posting cast: {str(e)}"
@@ -126,10 +128,8 @@ class FarcasterBot:
         """
         try:
             # Constructing the URL for fetching notifications
-            url = self.v2_url + "notifications?channel_ids=quarters&fid=" + os.getenv("FARCASTER_FID") + "&type=&priority_mode=false"
-
+            url = self.v2_url + "notifications?fid=" + os.getenv("FARCASTER_FID") + "&type=mentions,replies&priority_mode=false"
             response = requests.get(url, headers=self.headers)
-
             # Ensure the response is successful
             if response.status_code != 200:
                 return f"Error getting notifications: {response.status_code} - {response.text}"
@@ -156,7 +156,6 @@ class FarcasterBot:
                             else None
                         ),
                     'type': notification['type'],
-                    'seen': notification['seen'],
                     'age_in_sec': (datetime.utcnow() - datetime.strptime(notification['cast']['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ")).total_seconds()
                 }
                 for notification in notifications

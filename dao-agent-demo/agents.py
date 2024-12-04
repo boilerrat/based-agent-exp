@@ -87,7 +87,7 @@ def get_agent_address():
     Returns:
         str: The address of the agent
     """
-    address = agent_wallet.default_address.address_id
+    address = agent_wallet.address
     return f"Current address: {address}"
 
 # Function to generate art using DALL-E (requires separate OpenAI API key)
@@ -530,29 +530,41 @@ def check_cast_replies():
     return replies
 
 def check_cast_notifications():
-    # TODO: errors with 500
     """
-    Check recent farcaster notifications.
+    Check for a recent farcaster notification that is not acted on and not older than a day.
 
     wrapcast url will be in this format: (https://warpcast.com/<author>/<hash>) 
 
     Returns:
         str: Formatted string of recent notifications
     """
-    response = farcaster_bot.get_notifications()
+    all_notifications = farcaster_bot.get_notifications()
+    if isinstance(all_notifications, str):  # If an error occurred
+        return all_notifications
+    acted_notifications = memory_retention.get_acted_notifications()
+    print("acted notes", acted_notifications)
+    # If no acted notifications exist, create an empty set
+    acted_hashes = {item.get('hash') for item in acted_notifications if 'hash' in item} if acted_notifications else set()
+    print("acted ahshes", acted_hashes)
+    # Filter out already acted notifications
+    new_notifications = [n for n in all_notifications if n['hash'] not in acted_hashes and n['age_in_sec'] <= 86400]
+    print("new notes", new_notifications)
+    # Return the oldest notification based on 'age_in_sec', or None if no notifications exist
+    if new_notifications:
+        print("oldest, latest", min(new_notifications, key=lambda n: n['age_in_sec']))
+        return min(new_notifications, key=lambda n: n['age_in_sec'])
+    else:
+        return None
 
-    return response
-
-def mark_notifications_as_seen():
+def mark_notification_as_acted(notification_hash: str):
 
     """
-    Mark notifications as seen.
+    Mark notifications as acted.
 
     Returns:
-        str: Status message about the cast
+        bool: Status message about the cast
     """
-    response = farcaster_bot.mark_notifications_as_seen()
-    return response
+    return memory_retention.mark_notification_as_acted(notification_hash)
 
 def cast_reply(content: str, parentHash: str, parent_fid: int):
     """
@@ -636,8 +648,8 @@ def get_knowledge_by_keywords(keywords: str) -> str:
     Returns:
         str: a concatenated list of content
     """
-    print(keywords.strip().split())
-    return memory_retention.query_by_keywords(keywords.strip().split())
+    print(keywords.lower().strip().split())
+    return memory_retention.query_by_keywords(keywords.lower().strip().split())
 # Create the DAO Agent with all available functions
 
 print("Creating Agent...")
@@ -646,6 +658,7 @@ def dao_agent(instructions: str ):
     return Agent(
     name="Agent",
     instructions=instructions,
+    model="gpt-4o",
     functions=[
         get_balance,
         get_agent_address,
@@ -653,7 +666,7 @@ def dao_agent(instructions: str ):
         cast_to_farcaster,
         check_cast_replies,
         check_cast_notifications,
-        # mark_notifications_as_seen,
+        mark_notification_as_acted,
         cast_reply,
         check_recent_agent_casts,
         check_recent_user_casts,
