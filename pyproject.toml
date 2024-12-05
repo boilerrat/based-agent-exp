@@ -17,6 +17,7 @@ subgrounds = "^1.9.1"
 tinydb = "^4.8.2"
 eth-account = "^0.13.4"
 web3 = "^7.6.0"
+inflect = "^7.4.0"
 
 
 [build-system]

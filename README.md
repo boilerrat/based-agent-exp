@@ -112,6 +112,7 @@ Modify the `characters` folder to define:
 - **`helpers and utils`:** Includes DAO summoning tools, Warpcast, and Graph, json store utility wrappers.
 - **`run.py`:** Handles agent initialization and interval control for autonomous actions.
 - **`characters/`:** json files that define initial prompts and auto thoughts for agents
+- **`knowledge/`:** markdown files in this folder can be loaded into the knowledge base with import_knowledge.py script (file name should contain keywords ex: speedball_fair_token_launch.md)
 
 ---
 
@@ -127,10 +128,6 @@ For detailed configuration or additional features, refer to the helper files and
 
 > this is a repo to experiment on stuff, not for production use
 
-### local setup walkthrough and notes
-video recap and walkthrough: https://hackmd.io/VC-0zcJCTW-cwNUWwh4s8Q
-
-walkthrough loom: https://www.loom.com/share/2094a79bfd71452894e1cd98280d0292?sid=de350ca5-5ca0-41ec-a60d-1b1a03fd9068
 
 ## Introduction
 

@@ -529,7 +529,13 @@ def check_cast_replies():
 
     return replies
 
-def check_cast_notifications():
+def check_all_past_notifications():
+    """
+    this will return all notification from farcaster
+    """
+    return farcaster_bot.get_notifications()
+
+def check_recent_cast_notifications():
     """
     Check for a recent farcaster notification that is not acted on and not older than a day.
 
@@ -665,7 +671,8 @@ def dao_agent(instructions: str ):
         generate_art,  # Uncomment this line if you have configured the OpenAI API
         cast_to_farcaster,
         check_cast_replies,
-        check_cast_notifications,
+        check_recent_cast_notifications,
+        check_all_past_notifications,
         mark_notification_as_acted,
         cast_reply,
         check_recent_agent_casts,

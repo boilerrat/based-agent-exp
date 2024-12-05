@@ -4,7 +4,7 @@ from time import sleep
 from typing import List, Dict, Optional
 import requests
 import uuid
-
+import inflect
 from tinydb import TinyDB, Query
 
 from dotenv import load_dotenv
@@ -65,13 +65,17 @@ class MemoryRetention:
         """
         db = self.db
         File = Query()
+        inflector = inflect.engine()
 
         # Search for records where the 'keywords' field contains the specified keyword
         # Aggregate results for all keywords
         results = []
         for keyword in keywords:
-            matches = db.search(File.keywords.any(keyword.lower()))
-            results.extend(matches)
+            plural = inflector.plural(keyword)
+            singular_matches = db.search(File.keywords.any(keyword.lower()))
+            plural_matches = db.search(File.keywords.any(plural.lower()))
+            results.extend(singular_matches + plural_matches)
+
         # Remove duplicates (optional, in case multiple keywords match the same record)
         unique_results = {record['file_name']: record for record in results}.values()
         response = ""
