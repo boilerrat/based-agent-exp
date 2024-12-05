@@ -189,9 +189,9 @@ def pretty_print_messages(messages) -> None:
             print(f"\033[95m{name}\033[0m({arg_str[1:-1]})")
 
 
-def main():
+def main(mode):
 
-    mode = choose_mode()
+    mode = mode or choose_mode()
     instructions = get_instructions()
     print(instructions)
 
@@ -206,11 +206,14 @@ def main():
 
 
 if __name__ == "__main__":
+    mode = ""
     if len(sys.argv) > 1:
         character_file_path = sys.argv[1].lower().strip()
         set_character_file(character_file_path)
+        if len(sys.argv) > 2:
+            mode = sys.argv[2].lower().strip()
     else:
         character_file_path = "default_character_data.json"
         set_character_file(character_file_path)
     print(f"Starting DAO Agent ({character_file_path})...")
-    main()
+    main(mode)
