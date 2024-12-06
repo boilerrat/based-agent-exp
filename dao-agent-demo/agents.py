@@ -664,7 +664,7 @@ def dao_agent(instructions: str ):
     return Agent(
     name="Agent",
     instructions=instructions,
-    model="gpt-4o",
+    model="o1-mini",
     functions=[
         get_balance,
         get_agent_address,

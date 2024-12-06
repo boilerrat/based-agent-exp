@@ -2,17 +2,26 @@ import time
 import json
 import random
 import sys
+import logging
+
 from swarm import Swarm
 from swarm.repl import run_demo_loop
-from agents import dao_agent
+from agents import dao_agent, check_recent_cast_notifications
 from openai import OpenAI
 
 from prompt_helpers import set_character_file, get_character_json, get_instructions
 from interval_utils import get_interval, set_random_interval
 
 
-lower_interval = 20
-upper_interval = 100
+lower_interval = 60
+upper_interval = 120
+
+# Configure logging
+logging.basicConfig(
+    filename="streaming_response.log",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
 
 # this is the main loop that runs the agent in autonomous mode
 # you can modify this to change the behavior of the agent
@@ -32,18 +41,22 @@ def run_autonomous_loop(agent):
         )[0]
         thought = f"{character_json['pre_autonomous_thought']} {thought} {character_json['post_autonomous_thought']}"
 
-        messages.append({"role": "user", "content": thought})
+        if check_recent_cast_notifications():
+            messages.append({"role": "user", "content": thought})
 
-        print(f"\n\033[90mAgent's Thought:\033[0m {thought}")
+            print(f"\n\033[90mAgent's Thought:\033[0m {thought}")
 
-        # Run the agent to generate a response and take action
-        response = client.run(agent=agent, messages=messages, stream=True)
+            print("\n\033[90mChecking for new cast notifications...\033[0m")
+            # Run the agent to generate a response and take action
+            response = client.run(agent=agent, messages=messages, stream=True)
 
-        # Process and print the streaming response
-        response_obj = process_and_print_streaming_response(response)
+            # Process and print the streaming response
+            response_obj = process_and_print_streaming_response(response)
 
-        # Update messages with the new response
-        messages.extend(response_obj.messages)
+            # Update messages with the new response
+            messages.extend(response_obj.messages)
+        else:
+            print("\n\033[90mNo new cast notifications found...\033[0m")
 
         # Set a random interval between 600 and 3600 seconds
         set_random_interval(lower_interval, upper_interval)
@@ -146,8 +159,10 @@ def process_and_print_streaming_response(response):
         if "content" in chunk and chunk["content"] is not None:
             if not content and last_sender:
                 print(f"\033[94m{last_sender}:\033[0m", end=" ", flush=True)
+                logging.info(f"{last_sender}: ")  # Log sender
                 last_sender = ""
             print(chunk["content"], end="", flush=True)
+            logging.info(chunk["content"])  # Log content
             content += chunk["content"]
 
         if "tool_calls" in chunk and chunk["tool_calls"] is not None:
@@ -157,12 +172,15 @@ def process_and_print_streaming_response(response):
                 if not name:
                     continue
                 print(f"\033[94m{last_sender}: \033[95m{name}\033[0m()")
+                logging.info(f"{last_sender}: {name}()")  # Log tool calls
 
         if "delim" in chunk and chunk["delim"] == "end" and content:
             print()  # End of response message
+            logging.info("End of response.")  # Log end of response
             content = ""
 
         if "response" in chunk:
+            logging.info("Response complete.")  # Log response completion
             return chunk["response"]
 
 
