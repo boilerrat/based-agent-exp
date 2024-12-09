@@ -15,3 +15,5 @@ poetry.lock
 db.json
 
 ai-env/
+
+streaming_response.log
