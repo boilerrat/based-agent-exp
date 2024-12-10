@@ -137,7 +137,7 @@ def extract_vote(vote_text):
         return "Abstain"
     return "Unknown"  # Default if vote is unclear
 
-def update_narrative(game_context, proposer_name=None, proposal=None, outcome=None, gm_situation=None) -> dict:
+def update_narrative(game_context, proposer_name=None, proposal=None, outcome=None, gm_situation=None, summary_only=False, vote_message=None, player_vote=None) -> dict:
     """
     Updates the narrative log based on GM situations or player actions.
 
@@ -147,18 +147,34 @@ def update_narrative(game_context, proposer_name=None, proposal=None, outcome=No
         proposal (str): The proposal text (if applicable).
         outcome (str): Outcome of the proposal ("Proposal Passed" or "Proposal Failed") (if applicable).
         gm_situation (str): Situation introduced by the GM (if applicable).
+        summary_only (bool): If True, only include a summary of the GM situation.
+        vote_message (str): Message about the vote (if applicable).
+        player_vote (str): The player's vote ("Yes", "No", or "Abstain") (if applicable).
 
     Returns:
         dict: The updated game context with the narrative log
     """
     if gm_situation:
         # Log GM-introduced situations
+        if summary_only:
+            tag = "Summary"
+        else:
+            tag = "GM_Element"
         event_description = (
-            f"Round {game_context['round']}: New Element Introduced by GM.\n"
-            f"Situation: {gm_situation}\n"
+            f"Round {game_context['round']}: New Element Introduced by GM.\n "
+            f"Situation: {gm_situation}\n "
             "This element sets the stage for the colony's next decisions."
         )
-        game_context["narrative"].append({"tag": "GM_ELEMENT", "description": event_description})
+        game_context["narrative"].append({"tag": tag, "description": event_description})
+        return game_context
+    
+    if player_vote and vote_message:
+        # Log a player's vote
+        event_description = (
+            f"Round {game_context['round']}: {vote_message} \n"
+            f"Vote: {player_vote}\n"
+        )
+        game_context["narrative"].append({"tag": "Player_Vote", "description": event_description})
         return game_context
     
     if proposal and outcome:
@@ -166,14 +182,20 @@ def update_narrative(game_context, proposer_name=None, proposal=None, outcome=No
         if outcome == "Proposal Passed":
             event_description = (
                 f"Round {game_context['round']}: {proposer_name}'s proposal passed.\n"
-                f"Proposal: {proposal}\n"
-                f"This decision has reshaped the future of Artemis Base, addressing the current challenges."
             )
         else:
             event_description = (
                 f"Round {game_context['round']}: {proposer_name}'s proposal failed.\n"
-                f"Proposal: {proposal}\n"
-                f"Factional tensions rise as no consensus could be reached."
             )
         game_context["narrative"].append({"tag": "Outcome", "description": event_description})
+        return game_context
+    
+    if proposer_name and proposal:
+        # Log a player's proposal
+        event_description = (
+            f"Round {game_context['round']}: {proposer_name} has proposed a new action.\n"
+            f"Proposal: {proposal}\n"
+            "The colony must now decide whether to proceed with this action."
+        )
+        game_context["narrative"].append({"tag": "Proposal", "description": event_description})
         return game_context

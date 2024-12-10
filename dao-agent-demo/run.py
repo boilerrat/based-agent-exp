@@ -86,7 +86,7 @@ def run_openai_conversation_loop(agent):
     while True:
         # Generate OpenAI response
         openai_response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo", messages=openai_messages)
+            model="gpt-4o-mini", messages=openai_messages)
 
         openai_message = openai_response.choices[0].message.content
         print(f"\n\033[92mOpenAI Guide:\033[0m {openai_message}")
@@ -118,8 +118,7 @@ def run_openai_conversation_loop(agent):
 
 def run_dao_simulation_loop():
     """
-    Runs the DAO governance simulation loop with deliberation, soft signal, negotiation,
-    and GM incentive steps.
+    Runs the DAO governance simulation loop.
     """
     # Initialize Swarm and OpenAI clients
     client = Swarm()
@@ -135,70 +134,82 @@ def run_dao_simulation_loop():
         # Current player and GM
         player = players[turn_order[current_turn]]
         gm_identity = gm["Identity"]
+        gm_functionality = gm["Functionality"]
 
         # 1. Scenario Introduction (GM Phase)
-        # gm_prompt = {
-        #     "role": "system",
-        #     "content": gm["Functionality"]
-        # }
-        # gm_world_context = gm["WorldContext"]
-        # gm_input = {
-        #     "role": "user",
-        #     "content": f"Game Context: {json.dumps(game_context)}. GM World Context: {json.dumps(gm_world_context)}. Introduce a scenario that reflects these challenges."
-        # }
-        # openai_response = openai_client.chat.completions.create(
-        #     model="gpt-3.5-turbo", messages=[gm_prompt, gm_input]
-        # )
-        # gm_message = openai_response.choices[0].message.content
-        # print(f"\n\033[92mGM ({gm_identity}):\033[0m {gm_message}")
 
         gm_prompt = {
             "role": "system",
-            "content": gm["Functionality"]
+            "content": f"{gm_identity}, {gm_functionality}"
         }
         gm_world_context = gm["WorldContext"]
 
-        # Include narrative context for continuity
-        recent_narrative = game_context["narrative"][-1]["description"] if game_context["narrative"] else "The story is just beginning."
+        # Include narrative context for continuity (last 10 entries)
+        recent_narratives = game_context["narrative"][-20:] if game_context["narrative"] else [{"description": "The story is just beginning."}]
+        recent_narrative_descriptions = " ".join(entry["description"] for entry in recent_narratives)
 
+        # 1a. Generate a Summary of the Narrative
+        summary_input = {
+            "role": "user",
+            "content": (
+                f"Game Context: {json.dumps(game_context)}.\n"
+                f"Recent Narrative: {recent_narrative_descriptions}\n"
+                f"Player Key/Names: {[player['Key'] for player in players]}/{[player['Name'] for player in players]}\n"
+                "Summarize the key events of the narrative so far into a concise and engaging short story. "
+                "The summary should be no more than 2-5 paragraphs, capturing the main developments and tone of the story."
+            )
+        }
+
+        # Generate narrative summary
+        summary_response = openai_client.chat.completions.create(
+            model="gpt-4o-mini", messages=[gm_prompt, summary_input]
+        )
+        narrative_summary = summary_response.choices[0].message.content.strip()
+
+        # Add the summary to the narrative log as a new entry
+        update_narrative(game_context, gm_situation=narrative_summary, summary_only=True)
+        print(f"\n\033[93mNarrative Summary:\033[0m {narrative_summary}")
+
+        # 1b. Introduce a New Scenario
         gm_input = {
             "role": "user",
             "content": (
                 f"Game Context: {json.dumps(game_context)}.\n"
                 f"GM World Context: {json.dumps(gm_world_context)}.\n"
-                f"Recent Narrative: {recent_narrative}\n"
-                "Based on the recent events, introduce a new scenario or challenge that reflects the current state of Artemis Base. "
-                "Your scenario should:\n"
+                f"Recent Narrative: {narrative_summary}\n"
+                "Based on this summary and the current state of the colony, introduce a new scenario or challenge. "
+                "The scenario should:\n"
                 "- Build on the existing narrative.\n"
                 "- Add a new twist or complication for the colony.\n"
-                "- Create tension or urgency for the players to address in this round."
+                "- Create tension or urgency for the players to address in this round.\n"
+                "- Keep the new scenario concise and engaging (2-3 sentences). Avoid overly complex or abstract scenarios."
+
             )
         }
 
-        # Generate GM response
-        openai_response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo", messages=[gm_prompt, gm_input]
+        # Generate GM scenario
+        scenario_response = openai_client.chat.completions.create(
+            model="gpt-4o-mini", messages=[gm_prompt, gm_input]
         )
-        gm_message = openai_response.choices[0].message.content
+        gm_message = scenario_response.choices[0].message.content.strip()
 
-        # Log GM scenario in the narrative
-        game_context = update_narrative(game_context, gm_situation=gm_message)
-
-        print(f"\n\033[92mGM ({gm_identity}):\033[0m {gm_message}")
+        # Add the scenario to the narrative log
+        update_narrative(game_context, gm_situation=gm_message)
+        print(f"\n\033[92mGM Scenario:\033[0m {gm_message}")
 
         # 2. Deliberation Phase
         suggestions = {}
         for voter in players:
             voter_prompt = {
                 "role": "system",
-                "content": voter["Functionality"]
+                "content": f"{voter['Identity']} - {voter['Functionality']}"
             }
             deliberation_input = {
                 "role": "user",
-                "content": f"Scenario: {gm_message}. Context: {json.dumps(game_context)}. Provide a succinct suggestion (1-2 sentences) for addressing the scenario."
+                "content": f"Scenario: {gm_message}. Context: {json.dumps(game_context)}. Based on your character's beliefs and priorities, provide a succinct suggestion (1-2 sentences) for addressing the scenario."
             }
             deliberation_response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo", messages=[voter_prompt, deliberation_input]
+                model="gpt-4o-mini", messages=[voter_prompt, deliberation_input]
             )
             suggestion = deliberation_response.choices[0].message.content.strip()
             suggestions[voter["Name"]] = suggestion
@@ -209,7 +220,7 @@ def run_dao_simulation_loop():
         for voter in players:
             voter_prompt = {
                 "role": "system",
-                "content": voter["Functionality"]
+                "content": f"{voter['Identity']} - {voter['Functionality']}"
             }
             signal_input = {
                 "role": "user",
@@ -221,11 +232,12 @@ def run_dao_simulation_loop():
                     '  "Suggestion 2": "Against",\n'
                     '  "Suggestion 3": "For"\n'
                     "}\n"
+                    "Based on your character's beliefs and priorities, indicate whether you support or oppose each suggestion.\n"
                     "Do not include any additional text or explanations. Only provide the response in this format."
                 )
             }
             signal_response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo", messages=[voter_prompt, signal_input]
+                model="gpt-4o-mini", messages=[voter_prompt, signal_input]
             )
             try:
                 signals = json.loads(signal_response.choices[0].message.content.strip())
@@ -236,19 +248,19 @@ def run_dao_simulation_loop():
                 soft_signals[voter["Name"]] = {}
 
         # 4. Alignment Check and Negotiation Phase
-        if not check_alignment(soft_signals):
-            print("\n\033[91mNo alignment detected. Moving to GM Incentive Phase.\033[0m")
-            gm_incentive = {
-                "role": "user",
-                "content": f"Game Context: {json.dumps(game_context)}. Suggestions: {json.dumps(suggestions)}. Soft Signals: {json.dumps(soft_signals)}. Introduce an incentive or external pressure to encourage alignment."
-            }
-            gm_response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo", messages=[gm_prompt, gm_incentive]
-            )
-            incentive_message = gm_response.choices[0].message.content
-            print(f"\n\033[92mGM Incentive:\033[0m {incentive_message}")
-            game_context["incentives"] = incentive_message
-            game_context = update_narrative(game_context, gm_situation=game_context["incentives"])
+        # if not check_alignment(soft_signals):
+        #     print("\n\033[91mNo alignment detected. Moving to GM Incentive Phase.\033[0m")
+        #     gm_incentive = {
+        #         "role": "user",
+        #         "content": f"Game Context: {json.dumps(game_context)}. Suggestions: {json.dumps(suggestions)}. Soft Signals: {json.dumps(soft_signals)}. Introduce an incentive or external pressure to encourage alignment."
+        #     }
+        #     gm_response = openai_client.chat.completions.create(
+        #         model="gpt-4o-mini", messages=[gm_prompt, gm_incentive]
+        #     )
+        #     incentive_message = gm_response.choices[0].message.content
+        #     print(f"\n\033[92mGM Incentive:\033[0m {incentive_message}")
+        #     game_context["incentives"] = incentive_message
+        #     game_context = update_narrative(game_context, gm_situation=game_context["incentives"])
 
         # Negotiation Phase
         negotiations = {}
@@ -262,7 +274,7 @@ def run_dao_simulation_loop():
                 "content": f"Scenario: {gm_message}. Incentive: {game_context.get('incentives', '')}. Suggestions: {json.dumps(suggestions)}. Provide a compromise proposal (succinct, 1-2 sentences) that aligns with your beliefs."
             }
             negotiation_response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo", messages=[voter_prompt, negotiation_input]
+                model="gpt-4o-mini", messages=[voter_prompt, negotiation_input]
             )
             compromise = negotiation_response.choices[0].message.content.strip()
             negotiations[voter["Name"]] = compromise
@@ -283,15 +295,17 @@ def run_dao_simulation_loop():
                 "Your proposal should:\n"
                 "- Focus on one clear, decisive action.\n"
                 "- Be aligned with your character's beliefs.\n"
-                "- Add a unique and interesting twist to the overall narrative of Artemis Base.\n"
+                "- Add a unique and interesting twist to the overall narrative.\n"
                 "- Recognize that not everyone may agree with your decision.\n"
-                "Write the proposal in 2-4 sentences, starting with the phrase 'Proposal:'."
+                "- Write the proposal in 2-4 sentences, starting with the phrase 'Proposal:'."
             )
         }
         proposal_response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo", messages=[player_prompt, proposal_input]
+            model="gpt-4o-mini", messages=[player_prompt, proposal_input]
         )
         proposal_message = proposal_response.choices[0].message.content
+        update_narrative(game_context, proposer_name=player["Name"], proposal=proposal_message)
+
         print(f"\n\033[96mProposal from {player['Name']}:\033[0m {proposal_message}")
 
         # Add proposal to game context
@@ -323,15 +337,17 @@ def run_dao_simulation_loop():
                     "- Does this proposal align with your beliefs and priorities?\n"
                     "- Will this proposal help achieve your personal objectives, or does it conflict with them?\n"
                     "- How does your relationship with the proposer affect your willingness to support their idea?\n"
-                    "- Are you willing to oppose this proposal if it strongly conflicts with your principles, even if it risks damaging your relationship with the proposer?\n"
-                    "Be decisive in your vote (Yes, No, or Abstain), and explain your reasoning succinctly."
+                    "Be decisive in your vote (Yes, No, or Abstain), only vote Yes if you strongly support the proposal,"
+                    "and explain your reasoning succinctly in a few sentences."
                 )
             }
             vote_response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo", messages=[voter_prompt, vote_input]
+                model="gpt-4o-mini", messages=[voter_prompt, vote_input]
             )
             vote_message = vote_response.choices[0].message.content
             votes[voter["Key"]] = extract_vote(vote_message)
+            update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter['Name']}: {vote_message}", player_vote=votes[voter["Key"]])
+
             print(f"\n\033[95mVote from {voter['Name']}:\033[0m {extract_vote(vote_message)}: {vote_message}")
 
         # 7. Round Resolution
@@ -345,28 +361,28 @@ def run_dao_simulation_loop():
             # GM interprets the roll result
             if roll_result == 20:
                 gm_message = (
-                    f"The proposal is a resounding success! Not only does it solve the current challenge, "
-                    f"but it also inspires unity and optimism across Artemis Base. The colony thrives."
+                    f"Result: The action in the proposal is a resounding success! Not only does it solve the current challenge, "
+                    f"but it also inspires unity and optimism in the community."
                 )
             elif 15 <= roll_result <= 19:
                 gm_message = (
-                    f"The proposal succeeds with notable benefits. While some tensions remain, the colony "
+                    f"Result: The action in the proposal succeeds with notable benefits. While some tensions remain, the colony "
                     f"sees progress in addressing the challenge."
                 )
             elif 10 <= roll_result <= 14:
                 gm_message = (
-                    f"The proposal has limited success. It alleviates some immediate pressures, but deeper "
+                    f"Result: The action in the proposal has limited success. It alleviates some immediate pressures, but deeper "
                     f"issues persist."
                 )
             elif 2 <= roll_result <= 9:
                 gm_message = (
-                    f"The proposal falls short of expectations, introducing minor problems. Factional tensions grow, "
+                    f"Result: The action in the proposal falls short of expectations, introducing minor problems. Factional tensions grow, "
                     f"and the challenge remains unresolved."
                 )
             elif roll_result == 1:
                 gm_message = (
-                    f"The proposal critically fails, backfiring in an unexpected way. New problems emerge, "
-                    f"worsening the situation on Artemis Base."
+                    f"Result: The action in the proposal critically fails, backfiring in an unexpected way. New problems emerge, "
+                    f"worsening the situation for the population."
                 )
             
             # Add GM interpretation to the narrative
@@ -381,7 +397,9 @@ def run_dao_simulation_loop():
             update_narrative(game_context, gm_situation=gm_message)
             print(f"\n\033[91mGM Outcome:\033[0m {gm_message}")
 
-        print(f"\n\033[93mRound Results:\033[0m {json.dumps(game_context, indent=2)}")
+        print(f"\n\033[93mRelationship Results:\033[0m {json.dumps(game_context['relationships'], indent=2)}")
+        print(f"\n\033[93mResource Results:\033[0m {json.dumps(game_context['resources'], indent=2)}")
+
 
         # Advance turn order
         current_turn = (current_turn + 1) % len(players)
@@ -406,7 +424,7 @@ def resolve_round_with_relationships(context, votes, gm_message) -> dict:
     Returns:
         dict: Updated game context.
     """
-    print(f"\n\033[93mResolving Round...\033[0m votes: {votes}, GM: {gm_message}")
+    print(f"\n\033[93mResolving Round...\033[0m votes: {votes}")
     # Step 1: Tally votes and determine proposal outcome
     yes_votes = sum(1 for vote in votes.values() if vote.strip().lower() == "yes")
     no_votes = sum(1 for vote in votes.values() if vote.strip().lower() == "no")
