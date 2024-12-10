@@ -67,13 +67,14 @@ print(f"Wallet Address: {agent_wallet.address}")
 
 
 # Function to get the balance of a specific asset
-def get_balance():
+def get_balance(context_variables):
     """
     Get the eth balance of a specific asset in the agent's wallet.
     
     Returns:
         str: A message showing the current balance of the specified asset
     """
+
     balance = w3.eth.get_balance(agent_wallet.address)
     eth_balance = Web3().from_wei(balance, "ether")
         
@@ -694,6 +695,53 @@ def dao_agent(instructions: str ):
 
     ],
 )
+
+def gm_agent(instructions: str, name: str = "GM" ): 
+    print(instructions)
+    return Agent(
+    name=name,
+    instructions=instructions,
+    model="gpt-3.5-turbo",
+    functions=[
+        generate_art,  # Uncomment this line if you have configured the OpenAI API
+        cast_to_farcaster,
+        check_cast_replies,
+        check_recent_cast_notifications,
+        check_all_past_notifications,
+        mark_notification_as_acted,
+        cast_reply,
+        check_recent_agent_casts,
+        check_recent_user_casts,
+        check_user_profile,
+        get_dao_proposals,
+        get_passed_dao_proposals,
+        get_dao_proposal,
+        get_proposal_count,
+        get_proposal_votes_data,
+        get_all_memories,
+        get_knowledge_by_keywords
+
+    ],
+)
+
+def player_agent(instructions: str, name: str = "Player" ): 
+    return Agent(
+    name=name,
+    instructions=instructions,
+    model="gpt-3.5-turbo",
+    functions=[
+        get_balance,
+        get_agent_address,
+        generate_art,  # Uncomment this line if you have configured the OpenAI API
+        submit_dao_proposal,
+        vote_on_dao_proposal,
+        get_dao_proposal,
+        get_all_memories,
+        get_knowledge_by_keywords
+
+    ],
+)
+
 
 # Initialize FarcvasterBot with your credentials
 farcaster_bot = FarcasterBot()

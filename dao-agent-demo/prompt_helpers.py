@@ -41,6 +41,14 @@ def get_instructions():
     Extra: {character_file_json["Extra"]}
     """
 
+def get_instructions_from_file(file_json):
+    return f"""
+    Name: {file_json["Name"]}
+    Identity: {file_json["Identity"]}
+    Functionality: {file_json["Functionality"]}
+    Extra: {file_json["Extra"]}
+    """
+
 def get_thoughts():
     return f"""
     {character_file_json["pre_autonomous_thought"]}
@@ -199,3 +207,62 @@ def update_narrative(game_context, proposer_name=None, proposal=None, outcome=No
         )
         game_context["narrative"].append({"tag": "Proposal", "description": event_description})
         return game_context
+    
+def resolve_round_with_relationships(context, votes, gm_message) -> dict:
+    """
+    Resolves the round by updating the game context based on votes, relationships, and GM input.
+    
+    Args:
+        context (dict): Current game context.
+        votes (dict): Votes from each player.
+        gm_message (str): Input from the GM for context updates.
+
+    Returns:
+        dict: Updated game context.
+    """
+    print(f"\n\033[93mResolving Round...\033[0m votes: {votes}")
+    # Step 1: Tally votes and determine proposal outcome
+    yes_votes = sum(1 for vote in votes.values() if vote.strip().lower() == "yes")
+    no_votes = sum(1 for vote in votes.values() if vote.strip().lower() == "no")
+    abstentions = sum(1 for vote in votes.values() if vote.strip().lower() == "abstain")
+
+    print(f"\n\033[93mVote Tally:\033[0m Yes: {yes_votes}, No: {no_votes}, Abstain: {abstentions}")
+
+    if yes_votes > no_votes:
+        context["resources"]["allocated"] += 10  # Example allocation for passed proposals
+        context["last_decision"] = "Proposal Passed"
+        proposal_outcome = "passed"
+    else:
+        context["last_decision"] = "Proposal Failed"
+        proposal_outcome = "failed"
+
+    # Step 2: Update relationships based on voting alignment
+    for voter, vote in votes.items():
+        for other_voter, other_vote in votes.items():
+            if voter != other_voter:
+                # Update relationship based on alignment or conflict in votes
+                if vote.strip().lower() == other_vote.strip().lower():
+                    if vote.strip().lower() in ["yes", "no"]:  # Agreement on "yes" or "no"
+                        if context["relationships"][f"{voter}-{other_voter}"] < 2:
+                            context["relationships"][f"{voter}-{other_voter}"] += 1
+                else:
+                    # Disagreement decreases trust
+                    if context["relationships"][f"{voter}-{other_voter}"] > -2:
+                        context["relationships"][f"{voter}-{other_voter}"] -= 1
+
+                # Handle abstentions (neutral impact)
+                if vote.strip().lower() == "abstain" or other_vote.strip().lower() == "abstain":
+                    context["relationships"][f"{voter}-{other_voter}"] += 0  # No change
+
+    # Step 3: Apply GM influence
+    if "resources" in gm_message[-1]["content"].lower():
+        # Example: Parse GM message to extract resource changes
+        context["resources"]["total"] += 5  # Placeholder for GM influence
+    if "relationships" in gm_message[-1]["content"].lower():
+        # Example: GM imposes a +1 trust boost globally as a morale event
+        for key in context["relationships"].keys():
+            context["relationships"][key] += 1
+
+    context["morale"] = context.get("morale", 100) + (5 if proposal_outcome == "passed" else -5)
+
+    return context
