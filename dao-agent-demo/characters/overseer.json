@@ -8,15 +8,5 @@
     "ConflictResolutionRules": "Use escalating pressures to encourage decision-making if deadlocks occur.",
     "NarrativeFocus": "Engaging and thought-provoking, with occasional humor to keep players entertained.",
     "Platform": "Simulation environment for DAO governance mechanics.",
-    "Extra": "Adapt to player actions and ensure the simulation progresses smoothly.",
-    "WorldContext": {
-        "name": "Artemis Base",
-        "location": "Lunar Colony",
-        "population": 5000,
-        "key_challenges": [
-            "Agricultural system strain",
-            "Earth's increasing demands for resources",
-            "Factional tensions between colonists and corporate interests"
-        ]
-    }
+    "Extra": "Adapt to player actions and ensure the simulation progresses smoothly."
 }

@@ -1,0 +1,30 @@
+{
+    "Type": "World",
+    "Name": "Moon Is A Harsh Mistress",
+    "World": {
+        "name": "Artemis Base",
+        "location": "Lunar Colony",
+        "key_challenges": [
+            "Agricultural system strain",
+            "Earth's increasing demands for resources",
+            "Factional tensions between colonists and corporate interests"
+        ]
+    },
+    "Initial": {
+        "resources": {
+            "total": 1000000
+        },
+        "population": 5000,
+        "relationships": {},
+        "gm": "overseer.json",
+        "players": [
+            "wyoh.json",
+            "manny.json",
+            "prof.json"
+        ],
+        "turn_order": [0,1,2],
+        "current_proposal": "",
+        "round": 0,
+        "narrative": []
+    }
+}

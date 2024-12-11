@@ -1,0 +1,41 @@
+{
+    "Type": "World",
+    "Name": "Hogwarts School of Witchcraft and Wizardry",
+    "World": {
+        "name": "Hogwarts",
+        "location": "Scottish Highlands",
+        "key_challenges": [
+            "A cursed artifact causing havoc among students",
+            "Tensions between rival houses escalating to duels",
+            "A mysterious disturbance in the Forbidden Forest",
+            "Unexpected behavior from magical creatures near the castle"
+        ]
+    },
+    "Initial": {
+        "resources": {
+            "house_points": {
+                "Gryffindor": 200,
+                "Slytherin": 190,
+                "Ravenclaw": 220,
+                "Hufflepuff": 210
+            }
+        },
+        "population": {
+            "students": 280,
+            "faculty": 40,
+            "ghosts": 15
+        },
+        "relationships": {
+        },
+        "gm": "sorting_hat.json",
+        "players": [
+            "lila.json",
+            "rowan.json",
+            "sabastian.json"
+        ],
+        "turn_order": [0, 1, 2],
+        "current_proposal": "",
+        "round": 0,
+        "narrative": []
+    }
+}

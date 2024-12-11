@@ -46,7 +46,6 @@ def get_instructions_from_file(file_json):
     Name: {file_json["Name"]}
     Identity: {file_json["Identity"]}
     Functionality: {file_json["Functionality"]}
-    Extra: {file_json["Extra"]}
     """
 
 def get_thoughts():
@@ -59,39 +58,27 @@ def get_thoughts():
 def validate_character_json(character_json):
     required_fields = [
         "Name", "Identity", "Functionality", "Communications", "Friends",
-        "Interests", "Platform", "Extra", "pre_autonomous_thought",
-        "autonomous_thoughts", "post_autonomous_thought"
+        "Interests", "Platform"
     ]
     for field in required_fields:
         if field not in character_json:
             raise ValueError(f"Missing required field: {field}")
         
-def dao_simulation_setup() -> tuple:
+def dao_simulation_setup(world_context_json: str) -> tuple:
     """
+    Sets up the initial game context and characters for the DAO simulation.
+
+    Args: 
+        world_context_json (str): The JSON file containing the world context.
+    
     Returns a tuple of initial_context, players, gm
     """
 
-    # todo: load from file
-    initial_context = {
-        "resources": {"total": 100, "allocated": 0},
-        "relationships": {
-            "player1-player2": 0,
-            "player1-player3": 0,
-            "player2-player3": 0,
-            "player2-player1": 0,
-            "player3-player1": 0,
-            "player3-player2": 0,
-        },
-        "gm": "gm.json",
-        "players": ["player1.json", "player2.json", "player3.json"],
-        "turn_order": [0, 1, 2],  # Corresponds to player indices
-        "current_proposal": None,
-        "round": 0,
-        "narrative": []  # Initialize narrative log
-    }
+    with open(world_context_json, "r") as world_context_file:
+        initial_context = json.load(world_context_file)
 
-    players = [get_sim_character_json(file) for file in initial_context["players"]]
-    gm = get_sim_character_json(initial_context["gm"])
+    players = [get_sim_character_json(file) for file in initial_context["Initial"]["players"]]
+    gm = get_sim_character_json(initial_context["Initial"]["gm"])
     
     return initial_context, players, gm
 
@@ -113,11 +100,13 @@ def check_alignment(soft_signals):
     for player_signals in soft_signals.values():
         for suggestion, vote in player_signals.items():
             if suggestion not in suggestion_support:
-                suggestion_support[suggestion] = {"For": 0, "Against": 0}
+                suggestion_support[suggestion] = {"For": 0, "Against": 0, "Abstain": 0}
             if vote.lower() == "for":
                 suggestion_support[suggestion]["For"] += 1
-            elif vote.lower() == "against":
+            if vote.lower() == "against":
                 suggestion_support[suggestion]["Against"] += 1
+            elif vote.lower() == "abstain":
+                suggestion_support[suggestion]["Abstain"] += 1
 
     # Check if any suggestion has majority support
     for suggestion, counts in suggestion_support.items():
@@ -229,6 +218,9 @@ def resolve_round_with_relationships(context, votes, gm_message) -> dict:
     print(f"\n\033[93mVote Tally:\033[0m Yes: {yes_votes}, No: {no_votes}, Abstain: {abstentions}")
 
     if yes_votes > no_votes:
+
+        if "allocated" not in context["resources"]:
+            context["resources"]["allocated"] = 0
         context["resources"]["allocated"] += 10  # Example allocation for passed proposals
         context["last_decision"] = "Proposal Passed"
         proposal_outcome = "passed"
@@ -243,15 +235,21 @@ def resolve_round_with_relationships(context, votes, gm_message) -> dict:
                 # Update relationship based on alignment or conflict in votes
                 if vote.strip().lower() == other_vote.strip().lower():
                     if vote.strip().lower() in ["yes", "no"]:  # Agreement on "yes" or "no"
+                        if f"{voter}-{other_voter}" not in context["relationships"]:
+                            context["relationships"][f"{voter}-{other_voter}"] = 0
                         if context["relationships"][f"{voter}-{other_voter}"] < 2:
                             context["relationships"][f"{voter}-{other_voter}"] += 1
                 else:
                     # Disagreement decreases trust
+                    if f"{voter}-{other_voter}" not in context["relationships"]:
+                        context["relationships"][f"{voter}-{other_voter}"] = 0
                     if context["relationships"][f"{voter}-{other_voter}"] > -2:
                         context["relationships"][f"{voter}-{other_voter}"] -= 1
 
                 # Handle abstentions (neutral impact)
                 if vote.strip().lower() == "abstain" or other_vote.strip().lower() == "abstain":
+                    if f"{voter}-{other_voter}" not in context["relationships"]:
+                        context["relationships"][f"{voter}-{other_voter}"] = 0
                     context["relationships"][f"{voter}-{other_voter}"] += 0  # No change
 
     # Step 3: Apply GM influence

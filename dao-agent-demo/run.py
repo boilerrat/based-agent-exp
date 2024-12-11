@@ -123,9 +123,13 @@ def run_dao_simulation_loop():
     """
     # Initialize Swarm and OpenAI clients
     client = Swarm()
-    openai_client = OpenAI()
-    (initial_context, players, gm) = dao_simulation_setup()
-    game_context = initial_context.copy()
+    
+    world = choose_world()
+    print(f"Selected world: {world}")
+
+    (initial_context, players, gm) = dao_simulation_setup(world)
+    game_context = initial_context["Initial"].copy()
+    world_context = initial_context["World"].copy()
     turn_order = game_context["turn_order"]
     current_turn = 0  # Start with the first player in the turn order
 
@@ -145,8 +149,6 @@ def run_dao_simulation_loop():
         # 1. Scenario Introduction (GM Phase)
         print("\n\033[93m1. Scenario Introduction (GM Phase):\033[0m")
 
-
-        gm_world_context = gm["WorldContext"]
 
         # Include narrative context for continuity (last 10 entries)
         recent_narratives = game_context["narrative"][-20:] if game_context["narrative"] else [{"description": "The story is just beginning."}]
@@ -182,7 +184,7 @@ def run_dao_simulation_loop():
             "role": "user",
             "content": (
                 f"Game Context: {json.dumps(game_context)}.\n"
-                f"GM World Context: {json.dumps(gm_world_context)}.\n"
+                f"GM World Context: {json.dumps(world_context)}.\n"
                 f"Recent Narrative: {narrative_summary}\n"
                 "Based on this summary and the current state of the colony, introduce a new scenario or challenge. "
                 "The scenario should:\n"
@@ -232,9 +234,9 @@ def run_dao_simulation_loop():
                     "{\n"
                     '  "Suggestion 1": "For",\n'
                     '  "Suggestion 2": "Against",\n'
-                    '  "Suggestion 3": "For"\n'
+                    '  "Suggestion 3": "Abstain"\n'
                     "}\n"
-                    "Based on your character's beliefs and priorities, indicate whether you support or oppose each suggestion.\n"
+                    "Based on your character's beliefs and priorities, indicate whether you support, oppose or abstain for each suggestion.\n"
                     "Do not include any additional text or explanations. Only provide the response in this format."
                 )
             }
@@ -271,6 +273,7 @@ def run_dao_simulation_loop():
             negotiations[voter["Name"]] = compromise
 
         # 5. Proposal Submission Phase
+        # TODO: use dao proposal function, will need to wait or loop for completion
         print("\n\033[93m5. Proposal Submission Phase:\033[0m")
         print("\n\033[93mPlayer with Initiative:\033[0m", player["Name"])
         proposal_input = {
@@ -395,9 +398,50 @@ def run_dao_simulation_loop():
         if user_input.lower() == 'exit':
             break
 
+import os
 
+def choose_world(folder_path = "worlds"):
+    """
+    Lists files in a folder and allows the user to choose one.
 
+    Args:
+        folder_path (str): Path to the folder containing world files.
 
+    Returns:
+        str: The selected file name.
+    """
+    while True:
+        try:
+            # List files in the folder
+            files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+            if not files:
+                print("No files found in the folder.")
+                return None
+
+            print("\nAvailable Worlds:")
+            for idx, file_name in enumerate(files, start=1):
+                print(f"{idx}. {file_name}")
+
+            # Ask the user to choose a file
+            choice = input("\nChoose a world by number or name: ").strip()
+
+            # Handle numeric input
+            if choice.isdigit():
+                index = int(choice) - 1
+                if 0 <= index < len(files):
+                    return folder_path + "/" + files[index]
+                else:
+                    print("Invalid number. Please try again.")
+            # Handle name input
+            elif choice in files:
+                print(f"Selected world: {folder_path}/{choice}")
+                return folder_path + "/" + choice
+            else:
+                print("Invalid choice. Please try again.")
+
+        except FileNotFoundError:
+            print(f"Error: The folder '{folder_path}' does not exist.")
+            return None
 
 
 def choose_mode():

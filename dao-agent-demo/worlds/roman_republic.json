@@ -1,0 +1,37 @@
+{
+    "Type": "World",
+    "Name": "The Roman Republic",
+    "World": {
+        "name": "The Senate of Rome",
+        "location": "Rome, Italy",
+        "key_challenges": [
+            "Economic disparity causing unrest among the plebeians",
+            "Military generals accumulating unchecked power",
+            "Senators conspiring for personal gain at the expense of the republic",
+            "External threats from rival empires testing Rome's unity"
+        ]
+    },
+    "Initial": {
+        "resources": {
+            "treasury": 500000,
+            "legions": 5
+        },
+        "population": {
+            "plebeians": 100000,
+            "senators": 300,
+            "legionnaires": 10000
+        },
+        "relationships": {},
+        "gm": "consul.json",
+        "players": [
+            "caesar.json",
+            "magnus.json",
+            "cato_the_younger.json",
+            "cicero.json"
+        ],
+        "turn_order": [0, 1, 2, 3],
+        "current_proposal": "",
+        "round": 0,
+        "narrative": []
+    }
+}
