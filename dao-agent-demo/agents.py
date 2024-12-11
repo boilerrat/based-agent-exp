@@ -349,7 +349,7 @@ def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_e
 
 
 # function to submit a proposal
-def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal_link: str) -> str:
+def submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, proposal_link: str) -> str:
     """
     Submit a DAO Proposal. 
 
@@ -375,29 +375,37 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
     }
 
     proposal = json.dumps(proposal_details)
+    print("***", proposal)
 
     try:
         # Load the DAO contract
         dao_contract = w3.eth.contract(address=Web3.to_checksum_address(dao_address), abi=baal_abi)
+        print(f"Submitting proposal for DAO address {dao_address}...")
+        empty_bytes = "".encode('utf-8')
+        # Convert integer arguments
+        expiration = 0  # uint32
+        baalGas = 0     # uint256
 
         try:
             estimated_gas =  dao_contract.functions.submitProposal(
-            "",              # proposalData (empty string as per the original args_dict)
-            "0",             # expiration (default is "0")
-            "0",             # baalGas (default is "0")
+            empty_bytes ,              # proposalData (empty string as per the original args_dict)
+            expiration,             # expiration (default is "0")
+            baalGas,             # baalGas (default is "0")
             proposal         # details (the serialized proposal details)
         ).estimate_gas({
                 "from": agent_wallet.address,
             })
             print(f"Estimated gas: {estimated_gas}")
         except Exception as e:
+            print(f"Error estimating gas: {str(e)}")
             return f"Error estimating gas: {str(e)}"
 
+        
         # Prepare transaction arguments
         tx = dao_contract.functions.submitProposal(
-            "",              # proposalData (empty string as per the original args_dict)
-            "0",             # expiration (default is "0")
-            "0",             # baalGas (default is "0")
+            empty_bytes,     # proposalData (empty string as per the original args_dict)
+            expiration,             # expiration (default is "0")
+            baalGas,             # baalGas (default is "0")
             proposal         # details (the serialized proposal details)
         ).build_transaction({
             "from": agent_wallet.address,
@@ -420,6 +428,7 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
     except Exception as e:
         error_message = str(e)
         truncated_message = error_message[:200] + "..." if len(error_message) > 200 else error_message
+        print(f"Error submitting proposal: {truncated_message}")
         return f"Error Submitting Proposal in DAO: {truncated_message}"
 
     
@@ -679,7 +688,7 @@ def dao_agent(instructions: str ):
         check_recent_agent_casts,
         check_recent_user_casts,
         check_user_profile,
-        submit_dao_proposal,
+        submit_dao_proposal_onchain,
         vote_on_dao_proposal,
         # get_current_proposal_count
         get_dao_proposals,
@@ -733,7 +742,7 @@ def player_agent(instructions: str, name: str = "Player" ):
         get_balance,
         get_agent_address,
         generate_art,  # Uncomment this line if you have configured the OpenAI API
-        submit_dao_proposal,
+        submit_dao_proposal_onchain,
         vote_on_dao_proposal,
         get_dao_proposal,
         get_all_memories,

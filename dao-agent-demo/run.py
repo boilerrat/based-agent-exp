@@ -281,13 +281,14 @@ def run_dao_simulation_loop():
             "content": (
                 f"Scenario: {gm_message}.\n"
                 f"Negotiations: {json.dumps(negotiations)}.\n"
-                "Based on the negotiations and scenario, propose a specific and actionable solution.\n"
+                "Based on the negotiations and scenario, submit a dao proposal onchain\n"
+                "the proposal_description argument should be in markdown format, generate art and include it at the end of the markdown\n"
+                "the proposal_link should be to the generated art url\n"
                 "Your proposal should:\n"
                 "- Focus on one clear, decisive action.\n"
                 "- Be aligned with your character's beliefs.\n"
                 "- Add a unique and interesting twist to the overall narrative.\n"
                 "- Recognize that not everyone may agree with your decision.\n"
-                "- Write the proposal in 2-4 sentences, starting with the phrase 'Proposal:'."
             )
         }
         proposal_response = client.run(agent=player_agents[voter["Key"]], messages=[proposal_input], stream=False)
