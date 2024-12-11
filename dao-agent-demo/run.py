@@ -14,6 +14,7 @@ from prompt_helpers import (
     get_instructions_from_file, resolve_round_with_relationships
     )
 from interval_utils import get_interval, set_random_interval
+import sim_phases
 
 
 lower_interval = 20
@@ -131,8 +132,9 @@ def run_dao_simulation_loop():
     (initial_context, players, gm) = dao_simulation_setup(world)
     game_context = initial_context["Initial"].copy()
     world_context = initial_context["World"].copy()
+    simulation_steps = initial_context["Phases"]
     turn_order = game_context["turn_order"]
-    current_turn = 0  # Start with the first player in the turn order
+    current_turn = game_context["current_turn"]  # Start with the first player in the turn order
 
     print("Starting DAO governance simulation...")
 
@@ -143,257 +145,35 @@ def run_dao_simulation_loop():
     for player in players:
         player.set_agent(player_agent(player.get_instructions_string(), player.name))
 
-    print(gm, players)
+     # Initialize extra arguments
+    extra_args = {}
 
     while True:
         
 
-        # 1. Scenario Introduction (GM Phase)
-        print("\n\033[93m1. Scenario Introduction (GM Phase):\033[0m")
-
-
-        # Include narrative context for continuity (last 10 entries)
-        recent_narratives = game_context["narrative"][-20:] if game_context["narrative"] else [{"description": "The story is just beginning."}]
-        recent_narrative_descriptions = " ".join(entry["description"] for entry in recent_narratives)
-
-        # 1a. Generate a Summary of the Narrative
-        print("\n\033[93m1a. Generate a Summary (GM Phase):\033[0m")
-
-        summary_input = {
-            "role": "user",
-            "content": (
-                f"Game Context: {json.dumps(game_context)}.\n"
-                f"Recent Narrative: {recent_narrative_descriptions}\n"
-                f"Player Key/Names: {[player.key for player in players]}/{[player.name for player in players]}\n"
-                "Summarize the key events of the narrative into a concise and engaging short story. "
-                "The summary should be no more than 2-5 paragraphs, capturing the main developments and tone of the story."
-            )
-        }
-
-        summary_response = client.run(agent=gm.agent, messages=[summary_input], stream=False)
-
-
-        narrative_summary = summary_response.messages
-        pretty_print_messages(narrative_summary)
-        # Add the summary to the narrative log as a new entry
-        update_narrative(game_context, gm_situation=narrative_summary, summary_only=True)
-
-
-        # 1b. Introduce a New Scenario
-        print("\n\033[93m1b. Introduce a New Scenario (GM Phase):\033[0m")
-
-        gm_input = {
-            "role": "user",
-            "content": (
-                f"Game Context: {json.dumps(game_context)}.\n"
-                f"GM World Context: {json.dumps(world_context)}.\n"
-                f"Recent Narrative: {narrative_summary}\n"
-                "Based on this summary and the current state of the colony, introduce a new scenario or challenge. "
-                "The scenario should:\n"
-                "- Build on the existing narrative.\n"
-                "- Add a new twist or complication for the colony.\n"
-                "- Create tension or urgency for the players to address in this round.\n"
-                "- Keep the new scenario concise and engaging (2-3 sentences). Avoid overly complex or abstract scenarios."
-
-            )
-        }
-
-        # Generate GM scenario
-        scenario_response = client.run(agent=gm.agent, messages=[gm_input], stream=False)
-
-        gm_message = scenario_response.messages
-        pretty_print_messages(gm_message)
-
-        # Add the scenario to the narrative log
-        update_narrative(game_context, gm_situation=scenario_response.messages)
-
-        # 2. Deliberation Phase
-        print("\n\033[93m2. Deliberation Phase:\033[0m")
-
-        suggestions = {}
-        for voter in players:
-            deliberation_input = {
-                "role": "user",
-                "content": f"Scenario: {gm_message}. Context: {json.dumps(game_context)}. Based on your character's beliefs and priorities, provide a succinct suggestion (1-2 sentences) for addressing the scenario."
-            }
-            deliberation_response = client.run(agent=voter.agent, messages=[deliberation_input], stream=False)
+        for step in simulation_steps:
+            print(f"\n\033[93mExecuting Phase: {step}\033[0m")
             
-            pretty_print_messages(deliberation_response.messages)
+            # Dynamically load the phase function from `phases.py`
+            phase_function = getattr(sim_phases, step, None)
+            if callable(phase_function):
+                game_context = phase_function(game_context, world_context, players, gm, client, **extra_args)
 
-            suggestions[voter.name] = deliberation_response.messages
-            
-
-        # 3. Soft Signal Phase
-        print("\n\033[93m3. Soft Signal Phase:\033[0m")
-
-        soft_signals = {}
-        for voter in players:
-            signal_input = {
-                "role": "user",
-                "content": (
-                    f"Scenario: {gm_message}. Suggestions: {json.dumps(suggestions[voter.name])}.\n"
-                    "For each suggestion, respond in the following format:\n\n"
-                    "{\n"
-                    '  "Suggestion 1": "For",\n'
-                    '  "Suggestion 2": "Against",\n'
-                    '  "Suggestion 3": "Abstain"\n'
-                    "}\n"
-                    "Based on your character's beliefs and priorities, indicate whether you support, oppose or abstain for each suggestion.\n"
-                    "Do not include any additional text or explanations. Only provide the response in this format."
-                )
-            }
-
-            signal_response = client.run(agent=voter.agent, messages=[signal_input], stream=False)
-            pretty_print_messages(signal_response.messages)
-
-            try:
-                signals = json.loads(signal_response.messages[-1]["content"])
-                soft_signals[voter.name] = signals
-            except json.JSONDecodeError as e:
-                print(f"\n\033[91mError decoding signals for {voter.name}: {e}\033[0m")
-                soft_signals[voter.name] = {}
-
-        # 4. Negotiation Phase
-        print("\n\033[93m4. Negotiation Phase:\033[0m")
-
-        negotiations = {}
-        for voter in players:
-            negotiation_input = {
-                "role": "user",
-                "content": (
-                    f"Scenario: {gm_message}." 
-                    f"Incentive: {game_context.get('incentives', '')}. "
-                    f"Suggestions: {json.dumps(suggestions[voter.name])}. "
-                    "Provide a compromise proposal (succinct, 1-2 sentences) that aligns with your beliefs."
-                )
-            }
-
-            negotiation_response = client.run(agent=voter.agent, messages=[negotiation_input], stream=False)
-
-            compromise = negotiation_response.messages
-            pretty_print_messages(compromise)
-            negotiations[voter.name] = compromise
-
-        # 5. Proposal Submission Phase
-        # TODO: use dao proposal function, will need to wait or loop for completion
-        print("\n\033[93m5. Proposal Submission Phase:\033[0m")
-        print("\n\033[93mPlayer with Initiative:\033[0m", player.name)
-        proposal_input = {
-            "role": "user",
-            "content": (
-                f"Scenario: {gm_message}.\n"
-                f"Negotiations: {json.dumps(negotiations)}.\n"
-                "Based on the negotiations and scenario, submit a dao proposal onchain\n"
-                "the proposal_description argument should be in markdown format, generate art and include it at the end of the markdown\n"
-                "the proposal_link should be to the generated art url\n"
-                "Your proposal should:\n"
-                "- Focus on one clear, decisive action.\n"
-                "- Be aligned with your character's beliefs.\n"
-                "- Add a unique and interesting twist to the overall narrative.\n"
-                "- Recognize that not everyone may agree with your decision.\n"
-            )
-        }
-        proposal_response = client.run(agent=player.agent, messages=[proposal_input], stream=False)
-
-        proposal_message = proposal_response.messages
-        pretty_print_messages(proposal_message)
-        update_narrative(game_context, proposer_name=player.name, proposal=proposal_message)
-
-        # Add proposal to game context
-        game_context["current_proposal"] = proposal_message
-
-        # 6. Voting Phase
-        print("\n\033[93m6. Voting Phase:\033[0m")
-
-        votes = {}
-        proposer_key = players[turn_order[current_turn]].key  # Determine proposer
-        for voter in players:
-            relationship_key = f"{voter['Key']}-{proposer_key}"
-            reverse_key = f"{proposer_key}-{voter.name}"
-            relationship_value = (
-                game_context["relationships"].get(relationship_key) or
-                game_context["relationships"].get(reverse_key) or
-                0
-            )
-            vote_input = {
-                "role": "user",
-                "content": (
-                    f"Proposal: {game_context['current_proposal']}.\n"
-                    f"Context: {json.dumps(game_context)}.\n"
-                    f"The proposer of this proposal is {proposer_key}. Your current relationship with them is {relationship_value}.\n"
-                    "You are voting on this proposal based on your role, personal goals, and your relationship with the proposer.\n"
-                    "Consider the following:\n"
-                    "- Does this proposal align with your beliefs and priorities?\n"
-                    "- Will this proposal help achieve your personal objectives, or does it conflict with them?\n"
-                    "- How does your relationship with the proposer affect your willingness to support their idea?\n"
-                    "Be decisive in your vote (Yes, No, or Abstain), only vote Yes if you strongly support the proposal,"
-                    "and explain your reasoning succinctly in a few sentences."
-                )
-            }
-
-            vote_response = client.run(agent=voter.agent, messages=[vote_input], stream=False)
-
-            vote_message = vote_response.messages
-            votes[voter.key] = extract_vote(vote_message[-1]["content"])
-            pretty_print_messages(vote_message)
-            update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter.name}: {vote_message}", player_vote=votes[voter.key])
-
-        # 7. Round Resolution
-        print("\n\033[93m7. Round Resolution Phase:\033[0m")
-
-        game_context = resolve_round_with_relationships(game_context, votes, gm_message)
-        update_narrative(game_context, proposer_name=players[turn_order[current_turn]].name, outcome=game_context["last_decision"], proposal=game_context["current_proposal"])
-
-        # 8 Proposal resolution. If the proposal passed, roll a d20 for the outcome
-        print("\n\033[93m8. Proposal resolution Phase:\033[0m")
+                # Dynamically add extra arguments
+                # if step == "introduce_scenario":
+                #     extra_args["incentives"] = {"bonus": 50}
+            else:
+                print(f"\033[91mError: Phase '{step}' is not defined.\033[0m")
+                break
         
-        if game_context["last_decision"] == "Proposal Passed":
-            roll_result = roll_d20()
-            
-            # GM interprets the roll result
-            if roll_result == 20:
-                gm_message_content = (
-                    f"Result: The action in the proposal is a resounding success! Not only does it solve the current challenge, "
-                    f"but it also inspires unity and optimism in the community."
-                )
-            elif 15 <= roll_result <= 19:
-                gm_message_content = (
-                    f"Result: The action in the proposal succeeds with notable benefits. While some tensions remain, the colony "
-                    f"sees progress in addressing the challenge."
-                )
-            elif 10 <= roll_result <= 14:
-                gm_message_content = (
-                    f"Result: The action in the proposal has limited success. It alleviates some immediate pressures, but deeper "
-                    f"issues persist."
-                )
-            elif 2 <= roll_result <= 9:
-                gm_message_content = (
-                    f"Result: The action in the proposal falls short of expectations, introducing minor problems. Factional tensions grow, "
-                    f"and the challenge remains unresolved."
-                )
-            elif roll_result == 1:
-                gm_message_content = (
-                    f"Result: The action in the proposal critically fails, backfiring in an unexpected way. New problems emerge, "
-                    f"worsening the situation for the population."
-                )
-            
-        # If the proposal failed, add a generic failure message to the narrative
-        else:
-            gm_message_content = (
-                f"Result: The proposal failed to gain enough support. Factional tensions rise, leaving the challenge unresolved."
-            )
-
-        proposal_resolution = client.run(agent=gm.agent, messages=[{"role": "user", "content": gm_message_content},], stream=False)
-        proposal_resolution_messages = proposal_resolution.messages
-        pretty_print_messages(proposal_resolution_messages)
-        update_narrative(game_context, gm_situation=proposal_resolution_messages)
-
+        print(f"\n\033[93mFinal Results:\033[0m {json.dumps(game_context, indent=2)}")
         print(f"\n\033[93mRelationship Results:\033[0m {json.dumps(game_context['relationships'], indent=2)}")
         print(f"\n\033[93mResource Results:\033[0m {json.dumps(game_context['resources'], indent=2)}")
 
 
         # Advance turn order
         current_turn = (current_turn + 1) % len(players)
+        game_context["current_turn"] = current_turn
         game_context["round"] += 1
 
         # Check if simulation should continue

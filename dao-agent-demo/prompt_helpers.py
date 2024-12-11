@@ -255,10 +255,10 @@ def resolve_round_with_relationships(context, votes, gm_message) -> dict:
                     context["relationships"][f"{voter}-{other_voter}"] += 0  # No change
 
     # Step 3: Apply GM influence
-    if "resources" in gm_message[-1]["content"].lower():
+    if "resources" in gm_message.lower():
         # Example: Parse GM message to extract resource changes
         context["resources"]["total"] += 5  # Placeholder for GM influence
-    if "relationships" in gm_message[-1]["content"].lower():
+    if "relationships" in gm_message.lower():
         # Example: GM imposes a +1 trust boost globally as a morale event
         for key in context["relationships"].keys():
             context["relationships"][key] += 1

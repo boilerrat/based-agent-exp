@@ -10,6 +10,17 @@
             "Factional tensions between colonists and corporate interests"
         ]
     },
+    "Phases": [
+        "generate_summary",
+        "introduce_scenario",
+        "deliberation",
+        "soft_signal",
+        "negotiation",
+        "submit_proposal",
+        "voting",
+        "resolve_round",
+        "round_resolution"
+    ],
     "Initial": {
         "resources": {
             "total": 1000000
@@ -24,6 +35,7 @@
         ],
         "turn_order": [0,1,2],
         "current_proposal": "",
+        "current_turn": 0,
         "round": 0,
         "narrative": []
     }
