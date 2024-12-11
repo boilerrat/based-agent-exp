@@ -1,3 +1,4 @@
+import os
 import time
 import json
 import random
@@ -137,12 +138,13 @@ def run_dao_simulation_loop():
 
     # Current player and GM
     player = players[turn_order[current_turn]]
-    gma = gm_agent(get_instructions_from_file(gm), gm["Name"]) 
+    gm.set_agent(gm_agent(gm.get_instructions_string(), gm.name))
 
-    player_agents = {}
     for player in players:
-        player_agents[player["Key"]] = (player_agent(get_instructions_from_file(player), player["Name"]))
-    
+        player.set_agent(player_agent(player.get_instructions_string(), player.name))
+
+    print(gm, players)
+
     while True:
         
 
@@ -162,13 +164,13 @@ def run_dao_simulation_loop():
             "content": (
                 f"Game Context: {json.dumps(game_context)}.\n"
                 f"Recent Narrative: {recent_narrative_descriptions}\n"
-                f"Player Key/Names: {[player['Key'] for player in players]}/{[player['Name'] for player in players]}\n"
+                f"Player Key/Names: {[player.key for player in players]}/{[player.name for player in players]}\n"
                 "Summarize the key events of the narrative into a concise and engaging short story. "
                 "The summary should be no more than 2-5 paragraphs, capturing the main developments and tone of the story."
             )
         }
 
-        summary_response = client.run(agent=gma, messages=[summary_input], stream=False)
+        summary_response = client.run(agent=gm.agent, messages=[summary_input], stream=False)
 
 
         narrative_summary = summary_response.messages
@@ -197,7 +199,7 @@ def run_dao_simulation_loop():
         }
 
         # Generate GM scenario
-        scenario_response = client.run(agent=gma, messages=[gm_input], stream=False)
+        scenario_response = client.run(agent=gm.agent, messages=[gm_input], stream=False)
 
         gm_message = scenario_response.messages
         pretty_print_messages(gm_message)
@@ -214,11 +216,11 @@ def run_dao_simulation_loop():
                 "role": "user",
                 "content": f"Scenario: {gm_message}. Context: {json.dumps(game_context)}. Based on your character's beliefs and priorities, provide a succinct suggestion (1-2 sentences) for addressing the scenario."
             }
-            deliberation_response = client.run(agent=player_agents[voter["Key"]], messages=[deliberation_input], stream=False)
+            deliberation_response = client.run(agent=voter.agent, messages=[deliberation_input], stream=False)
             
             pretty_print_messages(deliberation_response.messages)
 
-            suggestions[voter["Name"]] = deliberation_response.messages
+            suggestions[voter.name] = deliberation_response.messages
             
 
         # 3. Soft Signal Phase
@@ -229,7 +231,7 @@ def run_dao_simulation_loop():
             signal_input = {
                 "role": "user",
                 "content": (
-                    f"Scenario: {gm_message}. Suggestions: {json.dumps(suggestions[voter['Name']])}.\n"
+                    f"Scenario: {gm_message}. Suggestions: {json.dumps(suggestions[voter.name])}.\n"
                     "For each suggestion, respond in the following format:\n\n"
                     "{\n"
                     '  "Suggestion 1": "For",\n'
@@ -241,15 +243,15 @@ def run_dao_simulation_loop():
                 )
             }
 
-            signal_response = client.run(agent=player_agents[voter["Key"]], messages=[signal_input], stream=False)
+            signal_response = client.run(agent=voter.agent, messages=[signal_input], stream=False)
             pretty_print_messages(signal_response.messages)
 
             try:
                 signals = json.loads(signal_response.messages[-1]["content"])
-                soft_signals[voter["Name"]] = signals
+                soft_signals[voter.name] = signals
             except json.JSONDecodeError as e:
-                print(f"\n\033[91mError decoding signals for {voter['Name']}: {e}\033[0m")
-                soft_signals[voter["Name"]] = {}
+                print(f"\n\033[91mError decoding signals for {voter.name}: {e}\033[0m")
+                soft_signals[voter.name] = {}
 
         # 4. Negotiation Phase
         print("\n\033[93m4. Negotiation Phase:\033[0m")
@@ -261,21 +263,21 @@ def run_dao_simulation_loop():
                 "content": (
                     f"Scenario: {gm_message}." 
                     f"Incentive: {game_context.get('incentives', '')}. "
-                    f"Suggestions: {json.dumps(suggestions[voter['Name']])}. "
+                    f"Suggestions: {json.dumps(suggestions[voter.name])}. "
                     "Provide a compromise proposal (succinct, 1-2 sentences) that aligns with your beliefs."
                 )
             }
 
-            negotiation_response = client.run(agent=player_agents[voter["Key"]], messages=[negotiation_input], stream=False)
+            negotiation_response = client.run(agent=voter.agent, messages=[negotiation_input], stream=False)
 
             compromise = negotiation_response.messages
             pretty_print_messages(compromise)
-            negotiations[voter["Name"]] = compromise
+            negotiations[voter.name] = compromise
 
         # 5. Proposal Submission Phase
         # TODO: use dao proposal function, will need to wait or loop for completion
         print("\n\033[93m5. Proposal Submission Phase:\033[0m")
-        print("\n\033[93mPlayer with Initiative:\033[0m", player["Name"])
+        print("\n\033[93mPlayer with Initiative:\033[0m", player.name)
         proposal_input = {
             "role": "user",
             "content": (
@@ -291,11 +293,11 @@ def run_dao_simulation_loop():
                 "- Recognize that not everyone may agree with your decision.\n"
             )
         }
-        proposal_response = client.run(agent=player_agents[voter["Key"]], messages=[proposal_input], stream=False)
+        proposal_response = client.run(agent=player.agent, messages=[proposal_input], stream=False)
 
         proposal_message = proposal_response.messages
         pretty_print_messages(proposal_message)
-        update_narrative(game_context, proposer_name=player["Name"], proposal=proposal_message)
+        update_narrative(game_context, proposer_name=player.name, proposal=proposal_message)
 
         # Add proposal to game context
         game_context["current_proposal"] = proposal_message
@@ -304,10 +306,10 @@ def run_dao_simulation_loop():
         print("\n\033[93m6. Voting Phase:\033[0m")
 
         votes = {}
-        proposer_key = players[turn_order[current_turn]]["Key"]  # Determine proposer
+        proposer_key = players[turn_order[current_turn]].key  # Determine proposer
         for voter in players:
             relationship_key = f"{voter['Key']}-{proposer_key}"
-            reverse_key = f"{proposer_key}-{voter['Name']}"
+            reverse_key = f"{proposer_key}-{voter.name}"
             relationship_value = (
                 game_context["relationships"].get(relationship_key) or
                 game_context["relationships"].get(reverse_key) or
@@ -329,18 +331,18 @@ def run_dao_simulation_loop():
                 )
             }
 
-            vote_response = client.run(agent=player_agents[voter["Key"]], messages=[vote_input], stream=False)
+            vote_response = client.run(agent=voter.agent, messages=[vote_input], stream=False)
 
             vote_message = vote_response.messages
-            votes[voter["Key"]] = extract_vote(vote_message[-1]["content"])
+            votes[voter.key] = extract_vote(vote_message[-1]["content"])
             pretty_print_messages(vote_message)
-            update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter['Name']}: {vote_message}", player_vote=votes[voter["Key"]])
+            update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter.name}: {vote_message}", player_vote=votes[voter.key])
 
         # 7. Round Resolution
         print("\n\033[93m7. Round Resolution Phase:\033[0m")
 
         game_context = resolve_round_with_relationships(game_context, votes, gm_message)
-        update_narrative(game_context, proposer_name=players[turn_order[current_turn]]["Name"], outcome=game_context["last_decision"], proposal=game_context["current_proposal"])
+        update_narrative(game_context, proposer_name=players[turn_order[current_turn]].name, outcome=game_context["last_decision"], proposal=game_context["current_proposal"])
 
         # 8 Proposal resolution. If the proposal passed, roll a d20 for the outcome
         print("\n\033[93m8. Proposal resolution Phase:\033[0m")
@@ -381,7 +383,7 @@ def run_dao_simulation_loop():
                 f"Result: The proposal failed to gain enough support. Factional tensions rise, leaving the challenge unresolved."
             )
 
-        proposal_resolution = client.run(agent=gma, messages=[{"role": "user", "content": gm_message_content},], stream=False)
+        proposal_resolution = client.run(agent=gm.agent, messages=[{"role": "user", "content": gm_message_content},], stream=False)
         proposal_resolution_messages = proposal_resolution.messages
         pretty_print_messages(proposal_resolution_messages)
         update_narrative(game_context, gm_situation=proposal_resolution_messages)
@@ -399,7 +401,6 @@ def run_dao_simulation_loop():
         if user_input.lower() == 'exit':
             break
 
-import os
 
 def choose_world(folder_path = "worlds"):
     """

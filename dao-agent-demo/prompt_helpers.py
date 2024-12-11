@@ -1,6 +1,8 @@
 import json
 import random
 
+from sim_agent import SimAgent
+
 character_file_json = {}
 
 def roll_d20():
@@ -77,8 +79,8 @@ def dao_simulation_setup(world_context_json: str) -> tuple:
     with open(world_context_json, "r") as world_context_file:
         initial_context = json.load(world_context_file)
 
-    players = [get_sim_character_json(file) for file in initial_context["Initial"]["players"]]
-    gm = get_sim_character_json(initial_context["Initial"]["gm"])
+    players = [SimAgent(instructions=get_sim_character_json(file)) for file in initial_context["Initial"]["players"]]
+    gm = SimAgent(instructions=get_sim_character_json(initial_context["Initial"]["gm"]))
     
     return initial_context, players, gm
 
