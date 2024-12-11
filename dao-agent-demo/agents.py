@@ -92,7 +92,7 @@ def get_agent_address():
     return f"Current address: {address}"
 
 # Function to generate art using DALL-E (requires separate OpenAI API key)
-def generate_art(prompt):
+def generate_art(prompt) -> str:
     """
     Generate art using DALL-E based on a text prompt.
     
@@ -120,13 +120,14 @@ def generate_art(prompt):
             image = ImageThumbnailer()
             image_url = image.upload_image(image_url)
 
-        return f"Generated artwork available at: {image_url}"
+        print(f"Generated artwork available at this url: {image_url}")
+        return f"Generated artwork available at this url: {image_url}"
 
     except Exception as e:
         return f"Error generating artwork: {str(e)}"
 
 # functions to interact with daos
-def vote_on_dao_proposal(proposal_id: str, vote: bool) -> str:
+def vote_on_dao_proposal(context_variable, proposal_id: str, vote: bool) -> str:
     """
     Vote on a DAO proposal.
 
@@ -137,6 +138,7 @@ def vote_on_dao_proposal(proposal_id: str, vote: bool) -> str:
     Returns:
         str: Success or error message.
     """
+    private_key = os.getenv(f"{context_variable.key}_AGENT_PRIVATE_KEY")
     dao_address = os.getenv("TARGET_DAO")
     if not isinstance(dao_address, str) or not isinstance(proposal_id, str) or not isinstance(vote, bool):
         return "Invalid input types"
@@ -361,6 +363,7 @@ def submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, 
     Returns:
         str: Success or error message.
     """
+    print("submitting proposal")
     dao_address = os.getenv("TARGET_DAO")
     if not isinstance(dao_address, str) or not isinstance(proposal_title, str):
         return "Invalid input types"
@@ -674,7 +677,7 @@ def dao_agent(instructions: str ):
     return Agent(
     name="Agent",
     instructions=instructions,
-    model="o1-mini",
+    model="gpt-4o-mini",
     functions=[
         get_balance,
         get_agent_address,
@@ -710,7 +713,7 @@ def gm_agent(instructions: str, name: str = "GM" ):
     return Agent(
     name=name,
     instructions=instructions,
-    model="gpt-3.5-turbo",
+    model="gpt-4o-mini",
     functions=[
         generate_art,  # Uncomment this line if you have configured the OpenAI API
         cast_to_farcaster,
@@ -737,12 +740,12 @@ def player_agent(instructions: str, name: str = "Player" ):
     return Agent(
     name=name,
     instructions=instructions,
-    model="gpt-3.5-turbo",
+    model="gpt-4o-mini",
     functions=[
         # get_balance,
         # get_agent_address,
-        # generate_art,  # Uncomment this line if you have configured the OpenAI API
-        # submit_dao_proposal_onchain,
+        generate_art,  # Uncomment this line if you have configured the OpenAI API
+        submit_dao_proposal_onchain,
         # vote_on_dao_proposal,
         # get_dao_proposal,
         # get_all_memories,
