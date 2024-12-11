@@ -66,8 +66,8 @@ def validate_character_json(character_json, character_type: str = "player"):
         ]
     else:
         required_fields = [
-            "Name", "Identity", "Functionality", "Communications", "Friends",
-            "Interests", "Platform"
+            "Name", "Identity", "Functionality", "Communications",
+            "Platform"
         ]
 
     for field in required_fields:
