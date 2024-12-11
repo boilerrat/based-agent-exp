@@ -18,21 +18,25 @@ def generate_summary(game_context, world_context, players, gm, client, **kwargs)
     summary_input = {
         "role": "user",
         "content": (
-            f"Game Context: {json.dumps(game_context)}.\n"
+            f"GM World Context: {json.dumps(world_context)}.\n"
             f"Recent Narrative: {recent_narrative_descriptions}\n"
             f"Player Key/Names: {[player.key for player in players]}/{[player.name for player in players]}\n"
             "Summarize the key events of the narrative into a concise and engaging short story. "
-            "The summary should be no more than 2-5 paragraphs, capturing the main developments and tone of the story."
+            "The summary should be no more than 6 paragraphs, capturing the main developments and tone of the story."
         )
     }
 
     summary_response = client.run(agent=gm.agent, messages=[summary_input], stream=False)
-    game_context["narrative_summary"] = summary_response.messages
-    pretty_print_messages(game_context["narrative_summary"])
+    game_context["narrative_summary"] = summary_response.messages[-1]["content"]
+    pretty_print_messages(summary_response.messages)
     update_narrative(game_context, gm_situation=game_context["narrative_summary"], summary_only=True)
     return game_context
 
 def introduce_scenario(game_context, world_context, players, gm, client, **kwargs):
+
+    # TODO check for current proposals that have not been voted on
+    # save current proposal id in game context
+    # also set current proposal here
     if "narrative_summary" not in game_context:
         raise ValueError("Narrative summary is required to introduce a scenario.")
     gm_input = {
@@ -40,10 +44,11 @@ def introduce_scenario(game_context, world_context, players, gm, client, **kwarg
         "content": (
             f"GM World Context: {json.dumps(world_context)}.\n"
             f"Recent Narrative: {game_context['narrative_summary']}\n"
-            "Based on this summary and the current state of the colony, introduce a new scenario or challenge. "
+            # add recent proposal 
+            "Based on this recent summary and the world context introduce a new scenario or challenge. "
             "The scenario should:\n"
             "- Build on the existing narrative.\n"
-            "- Add a new twist or complication for the colony.\n"
+            "- Add a new twist or complication for the world.\n"
             "- Create tension or urgency for the players to address in this round.\n"
             "- Keep the new scenario concise and engaging (2-3 sentences). Avoid overly complex or abstract scenarios."
 
@@ -72,7 +77,12 @@ def deliberation(game_context, world_context, players, gm, client, **kwargs):
     for voter in players:
         deliberation_input = {
             "role": "user",
-            "content": f"Scenario: {game_context['new_scenario']}.Narrative Summary: {game_context['narrative_summary']} Based on your character's beliefs and priorities, provide a succinct suggestion (1-2 sentences) for addressing the scenario."
+            "content": (
+                f"Scenario: {game_context['new_scenario']}\n"
+                f"Narrative Summary: {game_context['narrative_summary']}\n" 
+                "Based on your character's beliefs and priorities, provide a succinct suggestion (1-2 sentences) for addressing the scenario.\n" 
+                "Do not submit a proposal or call any function this is just for deliberation and negotiation."
+            )
         }
         deliberation_response = client.run(agent=voter.agent, messages=[deliberation_input], stream=False)
         
@@ -103,7 +113,7 @@ def soft_signal(game_context, world_context, players, gm, client, **kwargs):
                 '  "Suggestion 3": "Abstain"\n'
                 "}\n"
                 "Based on your character's beliefs and priorities, indicate whether you support, oppose or abstain for each suggestion.\n"
-                "Do not include any additional text or explanations. Only provide the response in this format."
+                "Do not include any additional text or explanations and do not execute any functions. Only provide the response in this format."
             )
         }
 
@@ -140,7 +150,8 @@ def negotiation(game_context, world_context, players, gm, client, **kwargs):
                 f"Scenario: {game_context['new_scenario']}." 
                 f"Suggestions: {game_context['suggestions']}. "
                 f"Soft Signals: {game_context['soft_signals']}. "
-                "Provide a compromise proposal (succinct, 1-2 sentences) that aligns with your beliefs."
+                "Provide a compromise suggestion (succinct, 1-2 sentences) that aligns with your beliefs."
+                "Do not submit a proposal or call any function this is just for deliberation and negotiation."
             )
         }
 
@@ -158,6 +169,9 @@ def negotiation(game_context, world_context, players, gm, client, **kwargs):
     return game_context
 
 def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
+    # todo if proposal id or current proposal exists skip
+    # early return game_context
+    # sompoint in here save proposal id
     turn_order = game_context["turn_order"]
     current_turn = game_context["current_turn"]
 
@@ -166,22 +180,25 @@ def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
     if "negotiations" not in game_context:
         raise ValueError("Negotiations are required for proposal submission.")
 
-    # Current player and GM
     player = players[turn_order[current_turn]]
     print("\n\033[93mPlayer with Initiative:\033[0m", player.name)
     proposal_input = {
         "role": "user",
         "content": (
+            f"World Context: {json.dumps(world_context)}.\n"
             f"Scenario: {game_context['new_scenario']}.\n"
             f"Negotiations: {json.dumps(game_context['negotiations'])}.\n"
-            "Based on the negotiations and scenario, submit a dao proposal onchain\n"
-            "the proposal_description argument should be in markdown format, generate art and include it at the end of the markdown\n"
-            "the proposal_link should be to the generated art url\n"
+            "Based on the negotiations and scenario create a new proposal with generated art to represent it.\n"
             "Your proposal should:\n"
             "- Focus on one clear, decisive action.\n"
             "- Be aligned with your character's beliefs.\n"
             "- Add a unique and interesting twist to the overall narrative.\n"
             "- Recognize that not everyone may agree with your decision.\n"
+            "- Include the generated art as a visual representation.\n"
+            "Submit it as a dao proposal onchain."
+            "the proposal_description argument should be in markdown format."
+            "the proposal_link should be to the generated art url.\n"
+
         )
     }
     proposal_response = client.run(agent=player.agent, messages=[proposal_input], stream=False)
@@ -193,10 +210,12 @@ def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
 
     # Add proposal to game context
     game_context["current_proposal"] = proposal_message
+    # add proposal id
     return game_context
 
 
 def voting(game_context, world_context, players, gm, client, **kwargs):
+    # get proposal id and current proposal off game context
     if "current_proposal" not in game_context:
         raise ValueError("Current proposal is required for voting phase.")
     if "new_scenario" not in game_context:
@@ -220,16 +239,17 @@ def voting(game_context, world_context, players, gm, client, **kwargs):
                 f"Scenario: {json.dumps(game_context['new_scenario'])}.\n"
                 f"The proposer of this proposal is {proposer_key}. Your current relationship with them is {relationship_value}.\n"
                 "You are voting on this proposal based on your role, personal goals, and your relationship with the proposer.\n"
+                "Do not submit a proposal, generate art or call any function this is just for voting.\n"
                 "Consider the following:\n"
                 "- Does this proposal align with your beliefs and priorities?\n"
                 "- Will this proposal help achieve your personal objectives, or does it conflict with them?\n"
                 "- How does your relationship with the proposer affect your willingness to support their idea?\n"
-                "Be decisive in your vote (Yes, No, or Abstain), only vote Yes if you strongly support the proposal,"
+                "Be decisive in your vote and explicitly state your choice (Yes, No, or Abstain), only vote Yes if you strongly support the proposal,"
                 "and explain your reasoning succinctly in a few sentences."
             )
         }
 
-        vote_response = client.run(agent=voter.agent, messages=[vote_input], stream=False)
+        vote_response = client.run(agent=voter.agent, messages=[vote_input], context_variables={"key":voter.key}, stream=False)
 
         vote_messages = vote_response.messages
         votes[voter.key] = extract_vote(vote_messages[-1]["content"])
@@ -240,7 +260,9 @@ def voting(game_context, world_context, players, gm, client, **kwargs):
         game_context["votes"][voter.name] = votes[voter.key]
         game_context["votes_reasoning"][voter.name] = vote_messages[-1]["content"]
         pretty_print_messages(vote_messages)
-        update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter.name}: {vote_messages[-1]["content"]}", player_vote=votes[voter.key])
+        update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter.name}: {vote_messages[-1]['content']}", player_vote=votes[voter.key])
+        # after succesfull vote clear current proposal and proposal id 
+        # game_context["current_proposal"] = ""
     return game_context
 
 def resolve_round(game_context, world_context, players, gm, client, **kwargs):

@@ -50,6 +50,28 @@ def get_instructions_from_file(file_json):
     Functionality: {file_json["Functionality"]}
     """
 
+def get_sim_instructions_from_json(file_json, character_type: str = "player"):
+    if character_type == "gm":
+        return f"""
+        Name: {file_json["Name"]}
+        Identity: {file_json["Identity"]}
+        Functionality: {file_json["Functionality"]}
+        Communications: {file_json["Communications"]}
+        ScenarioBuildingRules: {file_json["ScenarioBuildingRules"]}
+        ConflictResolutionRules: {file_json["ConflictResolutionRules"]}
+        NarrativeFocus: {file_json["NarrativeFocus"]}
+        Platform: {file_json["Platform"]}
+        Extra: {file_json["Extra"]}
+        """
+    else:
+        return f"""
+        Name: {file_json["Name"]}
+        Identity: {file_json["Identity"]}
+        Functionality: You have the ability to submit a dao proposal on chain and to generate art. But only do this if specifically prompted to do so.
+        Communications: {file_json["Communications"]}
+        Platform: {file_json["Platform"]}
+        """
+
 def get_thoughts():
     return f"""
     {character_file_json["pre_autonomous_thought"]}
@@ -86,6 +108,7 @@ def dao_simulation_setup(world_context_json: str) -> tuple:
 
     with open(world_context_json, "r") as world_context_file:
         initial_context = json.load(world_context_file)
+
 
     players = [SimAgent(instructions=get_sim_character_json(file)) for file in initial_context["Initial"]["players"]]
     gm = SimAgent(instructions=get_sim_character_json(initial_context["Initial"]["gm"]))
@@ -181,7 +204,7 @@ def update_narrative(game_context, proposer_name=None, proposal=None, outcome=No
             f"Round {game_context['round']}: {vote_message} \n"
             f"Vote: {player_vote}\n"
         )
-        game_context["narrative"].append({"tag": "Player_Vote", "description": event_description})
+        game_context["narrative"].append({"round": game_context['round'],"tag": "Player_Vote", "description": event_description})
         return game_context
     
     if proposal and outcome:

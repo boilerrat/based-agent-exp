@@ -9,7 +9,8 @@
             "Tensions between rival houses escalating to duels",
             "A mysterious disturbance in the Forbidden Forest",
             "Unexpected behavior from magical creatures near the castle"
-        ]
+        ],
+        "gm_instructions": ""
     },
     "Phases": [
         "generate_summary",

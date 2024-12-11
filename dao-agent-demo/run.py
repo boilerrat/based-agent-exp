@@ -133,18 +133,18 @@ def run_dao_simulation_loop():
     game_context = initial_context["Initial"].copy()
     world_context = initial_context["World"].copy()
     simulation_steps = initial_context["Phases"]
-    turn_order = game_context["turn_order"]
     current_turn = game_context["current_turn"]  # Start with the first player in the turn order
+
+
 
     print("Starting DAO governance simulation...")
 
-    # Current player and GM
-    player = players[turn_order[current_turn]]
-    gm.set_agent(gm_agent(gm.get_instructions_string(), gm.name))
+    gm.set_agent(gm_agent(gm.get_sim_instructions_from_json(), gm.name))
 
     for player in players:
-        player.set_agent(player_agent(player.get_instructions_string(), player.name))
-
+        player.set_agent(player_agent(player.get_sim_instructions_from_json(), player.name))
+        player.set_private_key(os.getenv(f"{player.key}_PRIVATE_KEY"))
+        print(player.agent)
      # Initialize extra arguments
     extra_args = {}
 
