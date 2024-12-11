@@ -240,7 +240,7 @@ def voting(game_context, world_context, players, gm, client, **kwargs):
         game_context["votes"][voter.name] = votes[voter.key]
         game_context["votes_reasoning"][voter.name] = vote_messages[-1]["content"]
         pretty_print_messages(vote_messages)
-        update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter.name}: {votes[voter.key]}", player_vote=votes[voter.key])
+        update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter.name}: {vote_messages[-1]["content"]}", player_vote=votes[voter.key])
     return game_context
 
 def resolve_round(game_context, world_context, players, gm, client, **kwargs):
