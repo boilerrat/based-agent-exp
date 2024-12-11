@@ -1,6 +1,8 @@
 import json
 import random
 
+from sim_agent import SimAgent
+
 character_file_json = {}
 
 def roll_d20():
@@ -85,9 +87,9 @@ def dao_simulation_setup(world_context_json: str) -> tuple:
     with open(world_context_json, "r") as world_context_file:
         initial_context = json.load(world_context_file)
 
-    players = [get_sim_character_json(file) for file in initial_context["Initial"]["players"]]
-    gm = get_sim_character_json(initial_context["Initial"]["gm"], character_type="gm")
-    
+    players = [SimAgent(instructions=get_sim_character_json(file)) for file in initial_context["Initial"]["players"]]
+    gm = SimAgent(instructions=get_sim_character_json(initial_context["Initial"]["gm"]))
+
     return initial_context, players, gm
 
 def check_alignment(soft_signals):
@@ -261,10 +263,10 @@ def resolve_round_with_relationships(context, votes, gm_message) -> dict:
                     context["relationships"][f"{voter}-{other_voter}"] += 0  # No change
 
     # Step 3: Apply GM influence
-    if "resources" in gm_message[-1]["content"].lower():
+    if "resources" in gm_message.lower():
         # Example: Parse GM message to extract resource changes
         context["resources"]["total"] += 5  # Placeholder for GM influence
-    if "relationships" in gm_message[-1]["content"].lower():
+    if "relationships" in gm_message.lower():
         # Example: GM imposes a +1 trust boost globally as a morale event
         for key in context["relationships"].keys():
             context["relationships"][key] += 1

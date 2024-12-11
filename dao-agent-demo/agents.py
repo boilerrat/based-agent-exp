@@ -739,14 +739,14 @@ def player_agent(instructions: str, name: str = "Player" ):
     instructions=instructions,
     model="gpt-3.5-turbo",
     functions=[
-        get_balance,
-        get_agent_address,
-        generate_art,  # Uncomment this line if you have configured the OpenAI API
-        submit_dao_proposal_onchain,
-        vote_on_dao_proposal,
-        get_dao_proposal,
-        get_all_memories,
-        get_knowledge_by_keywords
+        # get_balance,
+        # get_agent_address,
+        # generate_art,  # Uncomment this line if you have configured the OpenAI API
+        # submit_dao_proposal_onchain,
+        # vote_on_dao_proposal,
+        # get_dao_proposal,
+        # get_all_memories,
+        # get_knowledge_by_keywords
 
     ],
 )
@@ -755,7 +755,8 @@ def player_agent(instructions: str, name: str = "Player" ):
 # Initialize FarcvasterBot with your credentials
 farcaster_bot = FarcasterBot()
 # init the graph
-dh_graph = DaohausGraphData()
+# dh_graph = DaohausGraphData()
+dh_graph = None
 # init memory retention
 memory_retention = MemoryRetention()
     
