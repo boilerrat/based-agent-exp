@@ -166,7 +166,7 @@ def run_dao_simulation_loop():
                 print(f"\033[91mError: Phase '{step}' is not defined.\033[0m")
                 break
         
-        # print(f"\n\033[93mFinal Results:\033[0m {json.dumps(game_context, indent=2)}")
+        print(f"\n\033[93mFinal Results:\033[0m {json.dumps(game_context, indent=2)}")
         print(f"\n\033[93mRelationship Results:\033[0m {json.dumps(game_context['relationships'], indent=2)}")
         print(f"\n\033[93mResource Results:\033[0m {json.dumps(game_context['resources'], indent=2)}")
 

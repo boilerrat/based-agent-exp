@@ -109,7 +109,7 @@ def soft_signal(game_context, world_context, players, gm, client, **kwargs):
 
         signal_response = client.run(agent=voter.agent, messages=[signal_input], stream=False)
 
-        if "soft_signal" not in game_context:
+        if "soft_signals" not in game_context:
             game_context["soft_signals"] = {}
         if voter.name not in game_context["soft_signals"]:
             game_context["soft_signals"][voter.name] = {}
@@ -152,7 +152,7 @@ def negotiation(game_context, world_context, players, gm, client, **kwargs):
         
         pretty_print_messages(negotiation_response.messages)
         update_narrative(game_context, gm_situation=compromise)
-        if "compromise" not in game_context:
+        if "negotiations" not in game_context:
             game_context["negotiations"] = {}
         game_context["negotiations"][voter.name] = compromise
     return game_context
@@ -235,7 +235,10 @@ def voting(game_context, world_context, players, gm, client, **kwargs):
         votes[voter.key] = extract_vote(vote_messages[-1]["content"])
         if "votes" not in game_context:
             game_context["votes"] = {}
+        if "votes_reasoning" not in game_context:
+            game_context["votes_reasoning"] = {}
         game_context["votes"][voter.name] = votes[voter.key]
+        game_context["votes_reasoning"][voter.name] = vote_messages[-1]["content"]
         pretty_print_messages(vote_messages)
         update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter.name}: {votes[voter.key]}", player_vote=votes[voter.key])
     return game_context
@@ -244,7 +247,7 @@ def resolve_round(game_context, world_context, players, gm, client, **kwargs):
     if "votes" not in game_context:
         raise ValueError("Votes are required for round resolution.")
     game_context = resolve_round_with_relationships(game_context, game_context["votes"], game_context["new_scenario"])
-    print("\n\033[93mRound Resolution:\033[0m", game_context)
+    # print("\n\033[93mRound Resolution:\033[0m", game_context)
     return game_context
 
 
