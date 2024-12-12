@@ -1,10 +1,7 @@
 import click
 
-# from multiagent_daos.world_simulation import run_dao_simulation_loop
-from dao_agent_demo.worlds import fetch_world_files
-
-
-world_choices = fetch_world_files("./worlds")
+# from dao_agent_demo.worlds import fetch_world_files
+# world_choices = fetch_world_files("./worlds")
 
 @click.group()
 def cli():
@@ -85,25 +82,23 @@ def two_agent(character_file: str):
 
 
 @cli.command()
-@click.option(
-    "--world-definition",
-    type=click.Choice(world_choices),
-    help="World Definition to use for simulation",
-    prompt="Please select a world definition file",
-    default=world_choices[0]
-)
+# @click.option(
+#     "--world-definition",
+#     type=click.Choice(world_choices),
+#     help="World Definition to use for simulation",
+#     prompt="Please select a world definition file",
+#     default=world_choices[0]
+# )
 def run_simulation(
-    world_definition: str,
+    # world_definition: str,
 ):
     """
     Run a full multi-agent dao simulation session using a world definition
     """
-    # from multiagent_daos.world_simulation import run_dao_simulation_loop
     from dao_agent_demo.run import run_dao_simulation_loop
-    click.echo(click.style(f"Running simulation with World Definition file: {click.style(world_definition, fg='blue')}", fg="yellow"))
-    # run_dao_simulation_loop(world_definition_file)
-    run_dao_simulation_loop(f"./worlds/{world_definition}")
-
+    # click.echo(click.style(f"Running simulation with World Definition file: {click.style(world_definition, fg='blue')}", fg="yellow"))
+    # run_dao_simulation_loop(f"./worlds/{world_definition}")
+    run_dao_simulation_loop()
 
 @cli.command()
 def create_wallet():
