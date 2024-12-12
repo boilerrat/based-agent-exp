@@ -6,10 +6,10 @@ from eth_account.account import generate_mnemonic
 from eth_account.types import Language
 
 
-dotenv.load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
+dotenv.load_dotenv(".env")
 
 
-def main(prefix=""):
+def main(prefix="PLAYER_"):
 
     Account.enable_unaudited_hdwallet_features()
 
@@ -19,18 +19,18 @@ def main(prefix=""):
         num_words = 12
         mnemonic = generate_mnemonic(num_words=num_words, lang=Language.ENGLISH)
         print(f"New AGENT_MNEMONIC: {mnemonic}")
-        dotenv.set_key(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), key_to_set="AGENT_MNEMONIC", value_to_set=mnemonic)
+        dotenv.set_key(".env", key_to_set="AGENT_MNEMONIC", value_to_set=mnemonic)
 
     for i in range(3):
         account = Account.from_mnemonic(mnemonic, f"m/44'/60'/0'/0/{i}")
         # print(f"{prefix}{i}_AGENT_PRIVATE_KEY=0x{account.key.hex()}")
         dotenv.set_key(
-            dotenv_path=os.path.join(os.path.dirname(__file__), ".env"),
+            ".env",
             key_to_set=f"{prefix}{i}_AGENT_PRIVATE_KEY",
             value_to_set=f"0x{account.key.hex()}"
         )
         dotenv.set_key(
-            dotenv_path=os.path.join(os.path.dirname(__file__), ".env"),
+            ".env",
             key_to_set=f"{prefix}{i}_AGENT_ADDR",
             value_to_set=f"{account.address}"
         )

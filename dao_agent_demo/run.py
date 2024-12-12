@@ -5,16 +5,18 @@ import random
 import sys
 from swarm import Swarm
 from swarm.repl import run_demo_loop
-from agents import dao_agent, gm_agent, player_agent, check_recent_cast_notifications
 from openai import OpenAI
 
-from prompt_helpers import (
+from dao_agent_demo.agents import dao_agent, gm_agent, player_agent, check_recent_cast_notifications
+from dao_agent_demo.logs import pretty_print_messages
+from dao_agent_demo.prompt_helpers import (
     set_character_file, get_character_json, get_instructions, dao_simulation_setup, 
     extract_vote, check_alignment, update_narrative, roll_d20,
     get_instructions_from_file, resolve_round_with_relationships
     )
-from interval_utils import get_interval, set_random_interval
-import sim_phases
+from dao_agent_demo.interval_utils import get_interval, set_random_interval
+import dao_agent_demo.sim_phases as sim_phases
+from dao_agent_demo.worlds import fetch_world_files
 
 
 lower_interval = 20
@@ -119,14 +121,15 @@ def run_openai_conversation_loop(agent):
         if user_input.lower() == 'exit':
             break
 
-def run_dao_simulation_loop():
+def run_dao_simulation_loop(world=None):
     """
     Runs the DAO governance simulation loop.
     """
     # Initialize Swarm and OpenAI clients
     client = Swarm()
     
-    world = choose_world()
+    if not world:
+        world = choose_world()
     print(f"Selected world: {world}")
 
     (initial_context, players, gm) = dao_simulation_setup(world)
@@ -194,10 +197,7 @@ def choose_world(folder_path = "worlds"):
     while True:
         try:
             # List files in the folder
-            files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-            if not files:
-                print("No files found in the folder.")
-                return None
+            files = fetch_world_files(folder_path)
 
             print("\nAvailable Worlds:")
             for idx, file_name in enumerate(files, start=1):
@@ -282,30 +282,6 @@ def process_and_print_streaming_response(response):
 
         if "response" in chunk:
             return chunk["response"]
-
-
-def pretty_print_messages(messages) -> None:
-
-    for message in messages:
-        if message.get("role") != "assistant":
-            continue
-
-        # print agent name in blue
-        print(f"\033[94m{message['sender']}\033[0m:", end=" ")
-
-        # print response, if any
-        if message["content"]:
-            print(message["content"])
-
-        # print tool calls in purple, if any
-        tool_calls = message.get("tool_calls") or []
-        if len(tool_calls) > 1:
-            print()
-        for tool_call in tool_calls:
-            f = tool_call["function"]
-            name, args = f["name"], f["arguments"]
-            arg_str = json.dumps(json.loads(args)).replace(":", "=")
-            print(f"\033[95m{name}\033[0m({arg_str[1:-1]})")
 
 
 def main(mode): 

@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from constants_utils import (
+from dao_agent_demo.constants_utils import (
     DAOHAUS_GRAPH_URLS
     )
 

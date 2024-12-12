@@ -9,7 +9,7 @@ from web3.exceptions import ContractLogicError
 
 from eth_abi import encode as encode_abi
 
-from helpers import get_salt_nonce, is_eth_address, encode_values, encode_function, is_numberish, is_string
+from dao_agent_demo.helpers import get_salt_nonce, is_eth_address, encode_values, encode_function, is_numberish, is_string
 
 from dotenv import load_dotenv
 
@@ -37,7 +37,7 @@ with open("abis/safe_L2_abi.json", "r") as abi_file:
     safe_L2_abi = json.load(abi_file)
 
 
-from constants_utils import (
+from dao_agent_demo.constants_utils import (
     SUMMON_CONTRACTS,
     DEFAULT_DAO_PARAMS,
     DEFAULT_START_DATE_OFFSET,

@@ -11,12 +11,16 @@ from web3.exceptions import ContractLogicError
 from eth_account import Account
 
 
-from farcaster_utils import FarcasterBot
-from graph_utils import DaohausGraphData
-from image_utils import ImageThumbnailer
-from memory_retention_utils import MemoryRetention
+from dao_agent_demo.farcaster_utils import FarcasterBot
+from dao_agent_demo.graph_utils import DaohausGraphData
+from dao_agent_demo.image_utils import ImageThumbnailer
+from dao_agent_demo.memory_retention_utils import MemoryRetention
 
-from dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_address, assemble_yeeter_summoner_args
+from dao_agent_demo.dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_address, assemble_yeeter_summoner_args
+
+from dao_agent_demo.constants_utils import (
+    SUMMON_CONTRACTS,
+)
 
 # Load the ENS registrar and resolver ABIs
 with open("abis/registrar_abi.json", "r") as abi_file:
@@ -30,11 +34,6 @@ with open("abis/yeet24_hos_summoner_abi.json", "r") as abi_file:
 
 with open("abis/gnosis_multisend_abi.json", "r") as abi_file:
     gnosis_multisend_abi = json.load(abi_file)
-
-
-from constants_utils import (
-    SUMMON_CONTRACTS,
-)
 
 
 from dotenv import dotenv_values
