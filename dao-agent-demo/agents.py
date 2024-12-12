@@ -709,7 +709,7 @@ def dao_agent(instructions: str ):
 )
 
 def gm_agent(instructions: str, name: str = "GM" ): 
-    print(instructions)
+    print(f"\033[93mGame master:\033[0m\n{instructions}")
     return Agent(
     name=name,
     instructions=instructions,
