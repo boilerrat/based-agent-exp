@@ -2,7 +2,7 @@ import os
 import json
 
 from decimal import Decimal
-from typing import Union
+from typing import Union, List, Dict, TypedDict
 
 from openai import OpenAI
 from swarm import Agent
@@ -679,10 +679,12 @@ def get_knowledge_by_keywords(keywords: str) -> str:
     """
     print(keywords.lower().strip().split())
     return memory_retention.query_by_keywords(keywords.lower().strip().split())
+
+
+
+
 # Create the DAO Agent with all available functions
-
 print("Creating Agent...")
-
 def dao_agent(instructions: str ): 
     return Agent(
     name="Agent",

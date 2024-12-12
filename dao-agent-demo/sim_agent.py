@@ -18,15 +18,14 @@ class SimAgent:
     def get_instructions_string(self):
         return ", ".join(f"{key}: {value}" for key, value in self.instructions.items())
 
+
     def get_sim_instructions_from_json(self):
         if self.instructions["Type"] == "GM":
             return f"""
             Name: {self.instructions["Name"]}
             Identity: {self.instructions["Identity"]}
             Functionality: {self.instructions["Functionality"]}
-            Communications: {self.instructions["Communications"]}
             ScenarioBuildingRules: {self.instructions["ScenarioBuildingRules"]}
-            ConflictResolutionRules: {self.instructions["ConflictResolutionRules"]}
             NarrativeFocus: {self.instructions["NarrativeFocus"]}
             Platform: {self.instructions["Platform"]}
             Extra: {self.instructions["Extra"]}
@@ -39,7 +38,6 @@ class SimAgent:
             Name: {self.instructions["Name"]}
             Identity: {self.instructions["Identity"]}
             Functionality: You have the ability to submit a proposal on chain and to generate art. But only do this if specifically prompted to do so.
-            Communications: {self.instructions["Communications"]}
             Platform: {self.instructions["Platform"]}
             """
 

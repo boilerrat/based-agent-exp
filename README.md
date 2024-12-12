@@ -1,4 +1,7 @@
-# DAO AI Agent Local Setup
+# Anthology AI
+> “It's not a real train, Morty. It's a story device. Literally. A literal literary device quite literally metaphorically containing us”.
+
+## DAO AI Agent Local Setup
 
 This guide outlines the steps to set up a local development environment for an AI agent that interacts with Warpcast, the Graph, and DAOs on EVM chains.
 
@@ -97,7 +100,8 @@ python run.py <character file json>
 Options available:
 1. **Chat Mode:** Directly chat with the agent for tasks like generating proposals or interacting with DAOs.
 2. **Autonomous Mode:** The agent operates autonomously, performing actions like replying on Warpcast, creating proposals, or notifying about updates.
-3 **2 agent demo:** demo of 2 agents simulating a conversation
+3. **2 agent demo:** demo of 2 agents simulating a conversation
+4. **DAO simulator:** pick from a list of world simulations
 
 ### Customize Agent Behavior
 Modify the `characters` folder to define:
@@ -113,13 +117,15 @@ Modify the `characters` folder to define:
 - **`run.py`:** Handles agent initialization and interval control for autonomous actions.
 - **`characters/`:** json files that define initial prompts and auto thoughts for agents
 - **`knowledge/`:** markdown files in this folder can be loaded into the knowledge base with import_knowledge.py script (file name should contain keywords ex: speedball_fair_token_launch.md)
+- **`worlds/`:** directory for world def files that seed a simulation
 
 ---
 
 ## Additional Notes
 - **Intervals:** The autonomous mode executes random actions every 5 to 60 minutes by default. This can be adjusted in `run.py`.
 - **Memory Management:** There is a tinydb json store for committing memories, use this to avoid repetitive tasks
-- **Knowledge:** You can put markdown files in the knowledge folder and run import_knowledge.py to add it to the db 
+- **Knowledge:** You can put markdown files in the knowledge folder and run `import_knowledge.py` to add it to the db 
+- **Create New Simulation:** You can create a new simulation and all the config files needed with a script `create_sim.py` it just asks for a prompt and handles the rest.
 ---
 
 For detailed configuration or additional features, refer to the helper files and modify as needed.
