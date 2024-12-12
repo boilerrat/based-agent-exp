@@ -121,7 +121,7 @@ def run_openai_conversation_loop(agent):
         if user_input.lower() == 'exit':
             break
 
-def run_dao_simulation_loop(world=None):
+def run_dao_simulation_loop(world=None, off_chain=False):
     """
     Runs the DAO governance simulation loop.
     """
@@ -131,6 +131,7 @@ def run_dao_simulation_loop(world=None):
     if not world:
         world = choose_world()
     print(f"Selected world: {world}")
+    print(f"On-chain actions: {'Active' if not off_chain else 'Inactive'}")
 
     (initial_context, players, gm) = dao_simulation_setup(world)
     game_context = initial_context["Initial"].copy()

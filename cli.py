@@ -89,16 +89,30 @@ def two_agent(character_file: str):
 #     prompt="Please select a world definition file",
 #     default=world_choices[0]
 # )
+@click.option(
+    "--off-chain",
+    is_flag=True,
+    help="Run the simulation without interacting on-chain",
+    default=False
+)
 def run_simulation(
     # world_definition: str,
+    off_chain: bool
 ):
     """
     Run a full multi-agent dao simulation session using a world definition
     """
+    click.echo(click.style(
+        (
+            f"Running simulation with settings: "
+            f"{click.style(f'on-chain actions: <{not off_chain}>', fg='blue')}"
+        ),
+        fg="yellow"
+    ))
     from dao_agent_demo.run import run_dao_simulation_loop
     # click.echo(click.style(f"Running simulation with World Definition file: {click.style(world_definition, fg='blue')}", fg="yellow"))
     # run_dao_simulation_loop(f"./worlds/{world_definition}")
-    run_dao_simulation_loop()
+    run_dao_simulation_loop(off_chain=off_chain)
 
 @cli.command()
 def create_wallet():
