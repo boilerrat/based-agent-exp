@@ -127,20 +127,35 @@ def generate_art(prompt) -> str:
         return f"Error generating artwork: {str(e)}"
 
 # functions to interact with daos
-def vote_on_dao_proposal(context_variable, proposal_id: str, vote: bool) -> str:
+def vote_onchain(context_variables, proposal_id: str, vote: str) -> str:
     """
     Vote on a DAO proposal.
 
     Args:
+        context_variables (object): The context variables.
         proposal_id (str): The proposal ID.
-        vote (bool): The vote.
+        vote (str): The vote. Yes/No/Abstrain
 
     Returns:
         str: Success or error message.
     """
-    private_key = os.getenv(f"{context_variable.key}_AGENT_PRIVATE_KEY")
+    bool_vote = None
+    # map yes/no/abstain to boolean
+    if vote.lower() in ["yes", "true", "1"]:
+        bool_vote = True
+    elif vote.lower() in ["no", "false", "0"]:
+        bool_vote = False
+    else:
+        print("vote submitted for abstain")
+        return "Vote submitted to abstain"
+    AGENT_ADDR = agent_wallet.address
+    if context_variables and 'agent_key' in context_variables:
+        AGENT_ADDR = os.getenv(f"{context_variables['agent_key']}_AGENT_ADDR")
+        PRIVATE_KEY = os.getenv(f"{context_variables['agent_key']}_AGENT_PRIVATE_KEY")
+
     dao_address = os.getenv("TARGET_DAO")
-    if not isinstance(dao_address, str) or not isinstance(proposal_id, str) or not isinstance(vote, bool):
+    if not isinstance(dao_address, str) or not isinstance(proposal_id, str) or not isinstance(bool_vote, bool):
+        print("Invalid input types")
         return "Invalid input types"
 
     try:
@@ -151,32 +166,33 @@ def vote_on_dao_proposal(context_variable, proposal_id: str, vote: bool) -> str:
         dao_contract = w3.eth.contract(address=Web3.to_checksum_address(dao_address), abi=baal_abi)
 
         # Get the current gas price
-        gas_price = w3.eth.gas_price  # Automatically fetches the current network gas price
+        gas_price = int(w3.eth.gas_price + (w3.eth.gas_price * 0.1))   # Automatically fetches the current network gas price
 
         # Estimate the gas required for the transaction
         try:
-            estimated_gas = dao_contract.functions.submitVote(proposal_id_int, vote).estimate_gas({
-                "from": agent_wallet.address,
+            estimated_gas = dao_contract.functions.submitVote(proposal_id_int, bool_vote).estimate_gas({
+                "from": AGENT_ADDR,
             })
         except Exception as e:
             return f"Error estimating gas: {str(e)}"
+        try:
+            # Prepare transaction
+            tx = dao_contract.functions.submitVote(proposal_id_int, bool_vote).build_transaction({
+                "from": AGENT_ADDR,
+                "nonce": w3.eth.get_transaction_count(AGENT_ADDR),
+                "gas": int(estimated_gas + (estimated_gas * 0.1)),
+                "gasPrice": gas_price,
+            })
 
-        # Prepare transaction
-        tx = dao_contract.functions.submitVote(proposal_id_int, vote).build_transaction({
-            "from": agent_wallet.address,
-            "nonce": w3.eth.get_transaction_count(agent_wallet.address),
-            "gas": estimated_gas,
-            "gasPrice": gas_price,
-        })
+            # Sign transaction
+            signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
 
-        # Sign transaction
-        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-
-        # Send transaction
-        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-
-        # Wait for transaction receipt
-        receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+            # Send transaction
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            # Wait for transaction receipt
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+        except Exception as e:
+            print(f"Error submitting vote: {str(e)}")
 
         return f"Successfully voted on proposal id {proposal_id} for dao address {dao_address}, tx hash: {tx_hash.hex()}"
 
@@ -364,8 +380,7 @@ def submit_dao_proposal_onchain(context_variables, proposal_title: str, proposal
     Returns:
         str: Success or error message.
     """
-    print("submitting proposal as agent: ", context_variables["agent_key"], f"{context_variables['agent_key']}_AGENT_ADDR")
-    print("address", os.getenv(f"{context_variables['agent_key']}_AGENT_ADDR"))
+    print("submitting proposal as address", os.getenv(f"{context_variables['agent_key']}_AGENT_ADDR"))
     AGENT_ADDR = agent_wallet.address
     if context_variables and 'agent_key' in context_variables:
         AGENT_ADDR = os.getenv(f"{context_variables['agent_key']}_AGENT_ADDR")
@@ -384,7 +399,6 @@ def submit_dao_proposal_onchain(context_variables, proposal_title: str, proposal
     }
 
     proposal = json.dumps(proposal_details)
-    print("***", proposal)
 
     try:
         # Load the DAO contract
@@ -413,7 +427,7 @@ def submit_dao_proposal_onchain(context_variables, proposal_title: str, proposal
             print(f"Error estimating gas: {str(e)}")
             return f"Error estimating gas: {str(e)}"
 
-        
+
         # Prepare transaction arguments
         tx = dao_contract.functions.submitProposal(
             empty_bytes,     # proposalData (empty string as per the original args_dict)
@@ -423,8 +437,8 @@ def submit_dao_proposal_onchain(context_variables, proposal_title: str, proposal
         ).build_transaction({
             "from": AGENT_ADDR,
             "nonce": w3.eth.get_transaction_count(AGENT_ADDR),
-            "gas": estimated_gas,  
-            "gasPrice": w3.eth.gas_price,  # Dynamic gas price
+            "gas": int(estimated_gas + (estimated_gas * 0.1)),  # Add 10% buffer
+            "gasPrice": int(w3.eth.gas_price + (00.1)) # Add 10% buffer
         })
 
         # Sign the transaction
@@ -704,7 +718,7 @@ def dao_agent(instructions: str ):
         check_recent_user_casts,
         check_user_profile,
         submit_dao_proposal_onchain,
-        vote_on_dao_proposal,
+        vote_onchain,
         # get_current_proposal_count
         get_dao_proposals,
         get_passed_dao_proposals,
@@ -728,22 +742,8 @@ def gm_agent(instructions: str, name: str = "GM" ):
     model="gpt-4o-mini",
     functions=[
         generate_art,  # Uncomment this line if you have configured the OpenAI API
-        cast_to_farcaster,
-        check_cast_replies,
-        check_recent_cast_notifications,
-        check_all_past_notifications,
-        mark_notification_as_acted,
-        cast_reply,
-        check_recent_agent_casts,
-        check_recent_user_casts,
-        check_user_profile,
         get_dao_proposals,
-        get_passed_dao_proposals,
         get_dao_proposal,
-        get_proposal_count,
-        get_proposal_votes_data,
-        get_all_memories,
-        get_knowledge_by_keywords
 
     ],
 )
@@ -758,7 +758,7 @@ def player_agent(instructions: str, name: str = "Player" ):
         # get_agent_address,
         generate_art,  # Uncomment this line if you have configured the OpenAI API
         submit_dao_proposal_onchain,
-        # vote_on_dao_proposal,
+        vote_onchain,
         # get_dao_proposal,
         # get_all_memories,
         # get_knowledge_by_keywords

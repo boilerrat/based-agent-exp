@@ -1,10 +1,18 @@
 import json
+import os
 from run import pretty_print_messages
 from prompt_helpers import (
     set_character_file, get_character_json, get_instructions, dao_simulation_setup, 
     extract_vote, check_alignment, update_narrative, roll_d20,
     get_instructions_from_file, resolve_round_with_relationships
     )
+
+from dotenv import dotenv_values
+
+config = dotenv_values(".env")
+
+DAO_ADDRESS = os.getenv("TARGET_DAO")
+
 
 
 def generate_summary(game_context, world_context, players, gm, client, **kwargs):
@@ -171,9 +179,7 @@ def negotiation(game_context, world_context, players, gm, client, **kwargs):
     return game_context
 
 def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
-    # todo if proposal id or current proposal exists skip
-    # early return game_context
-    # sompoint in here save proposal id
+
     turn_order = game_context["turn_order"]
     current_turn = game_context["current_turn"]
 
@@ -190,7 +196,7 @@ def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
             f"World Context: {json.dumps(world_context)}.\n"
             f"Scenario: {game_context['new_scenario']}.\n"
             f"Negotiations: {json.dumps(game_context['negotiations'])}.\n"
-            "Based on the negotiations and scenario submit a new proposal onchain.\n"
+            "generate art based on your proposal\n"
             "Focus on one clear, decisive action and be aligned with your character's beliefs.\n"
             "Your response should be in the following json format:\n"
             "{\n"
@@ -199,7 +205,10 @@ def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
                '"proposal_id": "the returned proposal id.",\n'
                '"proposal_link": "The link to the art you generate.",\n'
             "}\n"
-            "Do not include any additional text or explanations. Only provide the response in this format."
+            "Do not include any additional text or explanations. Only provide the response in this format.\n"
+            "Do not use a place holder url for the art, generate the art and provide the link."
+            "The only function to call is submit_dao_proposal_onchain."
+            "Based on the negotiations and scenario submit a new proposal onchain only once (submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, proposal_link: str)).\n"
         )
     }
     proposal_response = client.run(agent=player.agent, messages=[proposal_input], stream=False, context_variables={"agent_key":player.key})
@@ -221,6 +230,7 @@ def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
         except TypeError as e:
             pass
     
+    print(f"\n\033[93mProposal URL:\033[0m https://admin.daohaus.fun/#/molochv3/0x2105/{DAO_ADDRESS}/proposal/{game_context['current_proposal_id']}" )
     # add proposal id
     return game_context
 
@@ -228,13 +238,19 @@ def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
 def voting(game_context, world_context, players, gm, client, **kwargs):
     # get proposal id and current proposal off game context
     if "current_proposal" not in game_context:
-        raise ValueError("Current proposal is required for voting phase.")
+        ("Current proposal is required for voting phase.")
+        return game_context
+    if "current_proposal_id" not in game_context:
+        ("Current proposal is required for voting phase.")
+        return game_context
     if "new_scenario" not in game_context:
-        raise ValueError("New scenario is required for voting phase.")
+        ("New scenario is required for voting phase.")
+        return game_context
     
 
     votes = {}
     proposer_key = players[game_context["turn_order"][game_context["current_turn"]]].key  # Determine proposer
+    proposal_id = game_context["current_proposal_id"]
     for voter in players:
         relationship_key = f"{voter.key}-{proposer_key}"
         reverse_key = f"{proposer_key}-{voter.key}"
@@ -247,20 +263,21 @@ def voting(game_context, world_context, players, gm, client, **kwargs):
             "role": "user",
             "content": (
                 f"Proposal: {game_context['current_proposal']}.\n"
+                f"Proposal ID: {game_context['current_proposal_id']}.\n"
                 f"Scenario: {json.dumps(game_context['new_scenario'])}.\n"
-                f"The proposer of this proposal is {proposer_key}. Your current relationship with them is {relationship_value}.\n"
-                "You are voting on this proposal based on your role, personal goals, and your relationship with the proposer.\n"
-                "Do not submit a proposal, generate art or call any function this is just for voting.\n"
+                "vote_onchain using the proposal ID. factor in your personal goals, and your relationship with the proposer.\n"
+                "Be decisive in your vote and explicitly state your choice (Yes, No, or Abstain), only vote Yes if you strongly support the proposal,"
+                "Do not submit a proposal! the only function to call is vote_onchain. Do not vote more than once.\n"
                 "Consider the following:\n"
+                f"- The proposer of this proposal is {voter.name}. Your current relationship with them is {relationship_value}.\n"
+                "- Do not vote no on your own proposal.\n"
                 "- Does this proposal align with your beliefs and priorities?\n"
                 "- Will this proposal help achieve your personal objectives, or does it conflict with them?\n"
-                "- How does your relationship with the proposer affect your willingness to support their idea?\n"
-                "Be decisive in your vote and explicitly state your choice (Yes, No, or Abstain), only vote Yes if you strongly support the proposal,"
-                "and explain your reasoning succinctly in a few sentences."
+                "Explain your reasoning succinctly in a few sentences. Do not submit a proposal just vote."
             )
         }
-
-        vote_response = client.run(agent=voter.agent, messages=[vote_input], context_variables={"key":voter.key}, stream=False)
+        print("\n\033[93mVoter:\033[0m", voter.name, voter.key)
+        vote_response = client.run(agent=voter.agent, messages=[vote_input], context_variables={"agent_key":voter.key}, stream=False)
 
         vote_messages = vote_response.messages
         votes[voter.key] = extract_vote(vote_messages[-1]["content"])
@@ -272,13 +289,13 @@ def voting(game_context, world_context, players, gm, client, **kwargs):
         game_context["votes_reasoning"][voter.name] = vote_messages[-1]["content"]
         pretty_print_messages(vote_messages)
         update_narrative(game_context, proposal=game_context["current_proposal"], vote_message=f"{voter.name}: {vote_messages[-1]['content']}", player_vote=votes[voter.key])
-        # after succesfull vote clear current proposal and proposal id 
-        # game_context["current_proposal"] = ""
+
     return game_context
 
 def resolve_round(game_context, world_context, players, gm, client, **kwargs):
     if "votes" not in game_context:
-        raise ValueError("Votes are required for round resolution.")
+        print("Votes are required for round resolution.")
+        return game_context
     game_context = resolve_round_with_relationships(game_context, game_context["votes"], game_context["new_scenario"])
     # print("\n\033[93mRound Resolution:\033[0m", game_context)
     return game_context
@@ -330,6 +347,9 @@ def round_resolution(game_context, world_context, players, gm, client, **kwargs)
     if "proposal_resolution" not in game_context:
         game_context["proposal_resolution"] = {}
     game_context["proposal_resolution"] = proposal_resolution_messages[-1]["content"]
+    # clear current proposal and current proposal id
+    game_context["current_proposal"] = None
+    game_context["current_proposal_id"] = None
     return game_context
 
 

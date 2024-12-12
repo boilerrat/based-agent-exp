@@ -1,0 +1,44 @@
+{
+    "Type": "World",
+    "Name": "The Great Fishing Frontier",
+    "World": {
+        "name": "The Great Fishing Frontier",
+        "description": "A sprawling landscape filled with diverse waterways, national parks, and fishing hot spots across the American wilderness. Players embark on a quest to master the art of fishing, facing unique environmental challenges and competing against fellow anglers.",
+        "key_challenges": [
+            "Navigating treacherous waters during seasonal storms.",
+            "Identifying and catching elusive fish species with specific bait requirements.",
+            "Competing in local and national fishing tournaments with varying rules and conditions."
+        ]
+    },
+    "Phases": [
+        "generate_summary",
+        "introduce_scenario",
+        "deliberation",
+        "soft_signal",
+        "negotiation",
+        "submit_proposal",
+        "voting",
+        "resolve_round",
+        "round_resolution"
+    ],
+    "Initial": {
+        "resources": {},
+        "population": {},
+        "relationships": {},
+        "gm": "the_great_fishing_frontier/jake_fisher.json",
+        "players": [
+            "the_great_fishing_frontier/jake_walleye_thompson.json",
+            "the_great_fishing_frontier/linda_reel_queen_martinez.json",
+            "the_great_fishing_frontier/eddie_catch_master_nguyen.json"
+        ],
+        "turn_order": [
+            0,
+            1,
+            2
+        ],
+        "current_proposal": "",
+        "current_turn": 0,
+        "round": 0,
+        "narrative": []
+    }
+}
