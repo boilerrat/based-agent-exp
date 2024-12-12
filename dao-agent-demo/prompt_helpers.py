@@ -83,13 +83,12 @@ def validate_character_json(character_json, character_type: str = "player"):
     required_fields = list()
     if character_type == "gm":
         required_fields = [
-            "Name", "Identity", "Functionality", "Communications", "ScenarioBuildingRules",
-            "ConflictResolutionRules", "NarrativeFocus", "Platform", "Extra"
+            "Name", "Key", "Identity", "Functionality", "ScenarioBuildingRules",
+            "NarrativeFocus", "Platform", "Extra"
         ]
     else:
         required_fields = [
-            "Name", "Identity", "Functionality", "Communications",
-            "Platform"
+            "Name", "Key", "Identity", "Functionality", "Platform"
         ]
 
     for field in required_fields:
