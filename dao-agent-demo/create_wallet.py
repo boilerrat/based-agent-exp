@@ -29,6 +29,11 @@ def main(prefix=""):
             key_to_set=f"{prefix}{i}_AGENT_PRIVATE_KEY",
             value_to_set=f"0x{account.key.hex()}"
         )
+        dotenv.set_key(
+            dotenv_path=os.path.join(os.path.dirname(__file__), ".env"),
+            key_to_set=f"{prefix}{i}_AGENT_ADDR",
+            value_to_set=f"{account.address}"
+        )
         print(f"{prefix}{i}_AGENT_ADDR={account.address}")
     
     print("Keys added to secrets(.env) file.")

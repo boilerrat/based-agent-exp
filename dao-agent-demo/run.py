@@ -143,8 +143,7 @@ def run_dao_simulation_loop():
 
     for player in players:
         player.set_agent(player_agent(player.get_sim_instructions_from_json(), player.name))
-        player.set_private_key(os.getenv(f"{player.key}_PRIVATE_KEY"))
-        print(player.agent)
+        player.set_address(os.getenv(f"{player.key}_AGENT_ADDR"))
      # Initialize extra arguments
     extra_args = {}
 

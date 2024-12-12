@@ -4,13 +4,13 @@ class SimAgent:
         self.key = instructions["Key"]
         self.name = instructions["Name"]
         self.type = instructions["Type"]
-        self.private_key = None
+        self.address = None
         self.agent = None
 
         
 
-    def set_private_key(self, private_key):
-        self.private_key = private_key
+    def set_address(self, address):
+        self.address = address
     
     def set_agent(self, agent):
         self.agent = agent

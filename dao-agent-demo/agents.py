@@ -351,11 +351,12 @@ def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_e
 
 
 # function to submit a proposal
-def submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, proposal_link: str) -> str:
+def submit_dao_proposal_onchain(context_variables, proposal_title: str, proposal_description: str, proposal_link: str) -> str:
     """
     Submit a DAO Proposal. 
 
     Args:
+        context_variables (object): The context variables.
         proposal_title (str): The proposal title.
         proposal_description (str): The proposal description.
         proposal_link (str): The proposal link.
@@ -363,9 +364,14 @@ def submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, 
     Returns:
         str: Success or error message.
     """
-    print("submitting proposal")
-    dao_address = os.getenv("TARGET_DAO")
-    if not isinstance(dao_address, str) or not isinstance(proposal_title, str):
+    print("submitting proposal as agent: ", context_variables["agent_key"], f"{context_variables['agent_key']}_AGENT_ADDR")
+    print("address", os.getenv(f"{context_variables['agent_key']}_AGENT_ADDR"))
+    AGENT_ADDR = agent_wallet.address
+    if context_variables and 'agent_key' in context_variables:
+        AGENT_ADDR = os.getenv(f"{context_variables['agent_key']}_AGENT_ADDR")
+        PRIVATE_KEY = os.getenv(f"{context_variables['agent_key']}_AGENT_PRIVATE_KEY")
+    DAO_ADDRESS = os.getenv("TARGET_DAO")
+    if not isinstance(DAO_ADDRESS, str) or not isinstance(proposal_title, str):
         return "Invalid input types"
 
     # Prepare the proposal details
@@ -382,12 +388,16 @@ def submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, 
 
     try:
         # Load the DAO contract
-        dao_contract = w3.eth.contract(address=Web3.to_checksum_address(dao_address), abi=baal_abi)
-        print(f"Submitting proposal for DAO address {dao_address}...")
+        dao_contract = w3.eth.contract(address=Web3.to_checksum_address(DAO_ADDRESS), abi=baal_abi)
+        print(f"Submitting proposal for DAO address {DAO_ADDRESS}...")
         empty_bytes = "".encode('utf-8')
         # Convert integer arguments
         expiration = 0  # uint32
         baalGas = 0     # uint256
+
+        # get the proposalCount from the contract
+        proposal_count = dao_contract.functions.proposalCount().call()
+        print(f"Current proposal count: {proposal_count}")
 
         try:
             estimated_gas =  dao_contract.functions.submitProposal(
@@ -396,7 +406,7 @@ def submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, 
             baalGas,             # baalGas (default is "0")
             proposal         # details (the serialized proposal details)
         ).estimate_gas({
-                "from": agent_wallet.address,
+                "from": AGENT_ADDR,
             })
             print(f"Estimated gas: {estimated_gas}")
         except Exception as e:
@@ -411,8 +421,8 @@ def submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, 
             baalGas,             # baalGas (default is "0")
             proposal         # details (the serialized proposal details)
         ).build_transaction({
-            "from": agent_wallet.address,
-            "nonce": w3.eth.get_transaction_count(agent_wallet.address),
+            "from": AGENT_ADDR,
+            "nonce": w3.eth.get_transaction_count(AGENT_ADDR),
             "gas": estimated_gas,  
             "gasPrice": w3.eth.gas_price,  # Dynamic gas price
         })
@@ -426,7 +436,7 @@ def submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, 
         # Wait for receipt
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 
-        return f"Successfully submitted proposal for DAO address {dao_address}. Transaction hash: {tx_hash.hex()}"
+        return f"Successfully submitted proposal for DAO address {DAO_ADDRESS}. Proposal Id: {int(proposal_count) + 1} Transaction hash: {tx_hash.hex()}"
 
     except Exception as e:
         error_message = str(e)

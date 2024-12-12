@@ -15,6 +15,8 @@ def generate_summary(game_context, world_context, players, gm, client, **kwargs)
     # 1a. Generate a Summary of the Narrative
     print("\n\033[93m1a. Generate a Summary (GM Phase):\033[0m")
 
+    summary_length = max(3, min(20, game_context["round"]))
+
     summary_input = {
         "role": "user",
         "content": (
@@ -22,7 +24,7 @@ def generate_summary(game_context, world_context, players, gm, client, **kwargs)
             f"Recent Narrative: {recent_narrative_descriptions}\n"
             f"Player Key/Names: {[player.key for player in players]}/{[player.name for player in players]}\n"
             "Summarize the key events of the narrative into a concise and engaging short story. "
-            "The summary should be no more than 6 paragraphs, capturing the main developments and tone of the story."
+            f"The summary should be no more than {summary_length} paragraphs, capturing the main developments and tone of the story."
         )
     }
 
@@ -188,28 +190,37 @@ def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
             f"World Context: {json.dumps(world_context)}.\n"
             f"Scenario: {game_context['new_scenario']}.\n"
             f"Negotiations: {json.dumps(game_context['negotiations'])}.\n"
-            "Based on the negotiations and scenario create a new proposal with generated art to represent it.\n"
-            "Your proposal should:\n"
-            "- Focus on one clear, decisive action.\n"
-            "- Be aligned with your character's beliefs.\n"
-            "- Add a unique and interesting twist to the overall narrative.\n"
-            "- Recognize that not everyone may agree with your decision.\n"
-            "- Include the generated art as a visual representation.\n"
-            "Submit it as a dao proposal onchain."
-            "the proposal_description argument should be in markdown format."
-            "the proposal_link should be to the generated art url.\n"
-
+            "Based on the negotiations and scenario submit a new proposal onchain.\n"
+            "Focus on one clear, decisive action and be aligned with your character's beliefs.\n"
+            "Your response should be in the following json format:\n"
+            "{\n"
+               '"proposal_title": "The proposal title.",\n'
+               '"proposal_description": "The proposal description in markdown format with generated art.",\n'
+               '"proposal_id": "the returned proposal id.",\n'
+               '"proposal_link": "The link to the art you generate.",\n'
+            "}\n"
+            "Do not include any additional text or explanations. Only provide the response in this format."
         )
     }
-    proposal_response = client.run(agent=player.agent, messages=[proposal_input], stream=False)
+    proposal_response = client.run(agent=player.agent, messages=[proposal_input], stream=False, context_variables={"agent_key":player.key})
 
     proposal_messages = proposal_response.messages
-    proposal_message = proposal_messages[-1]["content"]
+
+    proposal_message = proposal_messages[0]["content"]
     pretty_print_messages(proposal_messages)
     update_narrative(game_context, proposer_name=player.name, proposal=proposal_message)
 
-    # Add proposal to game context
-    game_context["current_proposal"] = proposal_message
+    # Add proposal to game context (try to find the json in the messages)
+    for message in proposal_messages:
+        try:
+            proposal = json.loads(message["content"])
+            game_context["current_proposal"] = proposal["proposal_description"]
+            game_context["current_proposal_id"] = proposal["proposal_id"]
+        except json.JSONDecodeError as e:
+            pass
+        except TypeError as e:
+            pass
+    
     # add proposal id
     return game_context
 
@@ -276,31 +287,33 @@ def resolve_round(game_context, world_context, players, gm, client, **kwargs):
 def round_resolution(game_context, world_context, players, gm, client, **kwargs):
     if game_context["last_decision"] == "Proposal Passed":
         roll_result = roll_d20()
+        print("\033[1mThe proposal passed but did it do what it was supposed to do?\033[0m")
+        print(f"\n🎲 \033[93mRound \033[91mResolution \033[92mROLL \033[94mD20:\033[0m : {roll_result} 🎲\n")
         
         # GM interprets the roll result
         if roll_result == 20:
             gm_message_content = (
-                f"Result: The action in the proposal is a resounding success! Not only does it solve the current challenge, "
+                f"Proposal passed but the action in the proposal is a resounding success! Not only does it solve the current challenge, "
                 f"but it also inspires unity and optimism in the community."
             )
         elif 15 <= roll_result <= 19:
             gm_message_content = (
-                f"Result: The action in the proposal succeeds with notable benefits. While some tensions remain, the colony "
+                f"Proposal passed but the action in the proposal succeeds with notable benefits. While some tensions remain, the colony "
                 f"sees progress in addressing the challenge."
             )
         elif 10 <= roll_result <= 14:
             gm_message_content = (
-                f"Result: The action in the proposal has limited success. It alleviates some immediate pressures, but deeper "
+                f"Proposal passed but the action in the proposal has limited success. It alleviates some immediate pressures, but deeper "
                 f"issues persist."
             )
         elif 2 <= roll_result <= 9:
             gm_message_content = (
-                f"Result: The action in the proposal falls short of expectations, introducing minor problems. Factional tensions grow, "
+                f"Proposal passed but the action in the proposal falls short of expectations, introducing minor problems. Factional tensions grow, "
                 f"and the challenge remains unresolved."
             )
         elif roll_result == 1:
             gm_message_content = (
-                f"Result: The action in the proposal critically fails, backfiring in an unexpected way. New problems emerge, "
+                f"Proposal passed but the action in the proposal critically fails, backfiring in an unexpected way. New problems emerge, "
                 f"worsening the situation for the population."
             )
         
