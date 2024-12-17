@@ -2,6 +2,7 @@
 *wallet_seed.json
 base_wallet_seed.json
 
+.DS_Store
 __pycache__/
 
 lib/

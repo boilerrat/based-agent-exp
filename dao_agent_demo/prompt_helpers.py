@@ -1,7 +1,7 @@
 import json
 import random
 
-from sim_agent import SimAgent
+from dao_agent_demo.sim_agent import SimAgent
 
 character_file_json = {}
 

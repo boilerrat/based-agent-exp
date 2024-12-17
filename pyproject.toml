@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "dao-agent-demo"
+name = "dao-agents-simulator"
 version = "0.1.0"
 description = ""
 authors = ["Dekan <dekanbrown@odyssy.io>"]
 readme = "README.md"
-package-mode = false
+packages = [ { include = "dao_agent_demo" }, {include = "cli.py" } ]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -18,8 +18,12 @@ tinydb = "^4.8.2"
 eth-account = "^0.13.4"
 web3 = "^7.6.0"
 inflect = "^7.4.0"
+click = "^8.1.7"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+dao-agents = "cli:run"
