@@ -139,28 +139,39 @@ def run_dao_simulation_loop(world=None, off_chain=False):
     simulation_steps = initial_context["Phases"]
     current_turn = game_context["current_turn"]  # Start with the first player in the turn order
 
-
-
     print("Starting DAO governance simulation...")
 
-    gm.set_agent(gm_agent(gm.get_sim_instructions_from_json(), gm.name))
+    # verify on_chain reqs if one doesn't exists default to off_chain. .env WEB3_PROVIDER_URI, TARGET_DAO, AGENT_ADDR
+    if not off_chain:
+        if not os.getenv("TARGET_DAO"):
+            print("Error: On-chain mode requires the following environment variables to be set: TARGET_DAO")
+            print("See README.md for more information. Defaulting to off-chain mode.")
+            off_chain = True
+        for player in players:
+            try:
+                player.set_address(os.getenv(f"{player.key}_AGENT_ADDR"))
+            except:
+                print(f"Error: {player.key}_AGENT_ADDR not set. Defaulting to off-chain mode.")
+                off_chain = True
+                break
 
+    # Set agents for the GM and players
+    gm.set_agent(gm_agent(gm.get_sim_instructions_from_json(), gm.name, off_chain))
     for player in players:
-        player.set_agent(player_agent(player.get_sim_instructions_from_json(), player.name))
-        player.set_address(os.getenv(f"{player.key}_AGENT_ADDR"))
+        player.set_agent(player_agent(player.get_sim_instructions_from_json(), player.name, off_chain))
+        
      # Initialize extra arguments
     extra_args = {}
 
     while True:
         
-
         for step in simulation_steps:
             print(f"\n\033[93mExecuting Phase: {step}\033[0m")
             
             # Dynamically load the phase function from `phases.py`
             phase_function = getattr(sim_phases, step, None)
             if callable(phase_function):
-                game_context = phase_function(game_context, world_context, players, gm, client, **extra_args)
+                game_context = phase_function(game_context, world_context, players, gm, client, off_chain, **extra_args)
 
                 # Dynamically add extra arguments
                 # if step == "introduce_scenario":

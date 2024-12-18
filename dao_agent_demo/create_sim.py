@@ -1,6 +1,4 @@
 import json
-import os
-import sys
 import re
 from pathlib import Path
 
@@ -8,10 +6,6 @@ from typing import Union, List, Dict, TypedDict
 
 from openai import OpenAI
 
-from dotenv import dotenv_values, load_dotenv
-
-config = dotenv_values(".env")
-load_dotenv()
 
 def generate_world_json(prompt):
     openai_client = OpenAI()
@@ -56,7 +50,7 @@ def generate_character_json(prompt):
     # Load the prompt
     input_prompt = {
         "role": "user",
-        "content": ("Generate 3 player characters based on the prompt." 
+        "content": ("Generate 3 unique player characters based on the prompt." 
               f"Prompt: {prompt}\n"
               "Your response should be in the following json format:\n"
             "[\n"
@@ -96,18 +90,21 @@ def generate_character_json(prompt):
     except Exception as e:
         raise f"Error generating character json: {str(e)}"
 
-def generate_gm_json(prompt):
+def generate_gm_json(prompt, player_configs):
     openai_client = OpenAI()
     system_prompt = {
             "role": "system",
             "content": f"you are a AI that only replies in json format."
         }
+    
+    player_names = [player["Name"] for player in player_configs]
 
     # Load the prompt
     input_prompt = {
         "role": "user",
-        "content": ("Generate a gm character JSON for a game based on the prompt." 
+        "content": ("Generate a unique gm character JSON for a game based on the prompt." 
               f"Prompt: {prompt}\n"
+              f"Player Names: {player_names}\n"
               "Your response should be in the following json format:\n"
             "{\n"
                 '"Name": "The name of the gm.",\n'
@@ -284,7 +281,7 @@ def main():
     
     world_config = generate_world_json(user_input)
     player_configs = generate_character_json(user_input)
-    gm_config = generate_gm_json(user_input)
+    gm_config = generate_gm_json(user_input, player_configs)
 
     generate_world_simulation(world_config, gm_config, player_configs)
 

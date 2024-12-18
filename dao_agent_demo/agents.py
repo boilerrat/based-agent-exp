@@ -38,7 +38,7 @@ with open("abis/gnosis_multisend_abi.json", "r") as abi_file:
 
 from dotenv import dotenv_values
 
-config = dotenv_values(".env")
+config = dotenv_values("../.env")
 
 PRIVATE_KEY = os.getenv("AGENT_PRIVATE_KEY", "").replace('\\n', '\n')
 TARGET_CHAIN = os.getenv("TARGET_CHAIN", "0x2105")
@@ -119,8 +119,8 @@ def generate_art(prompt) -> str:
             image = ImageThumbnailer()
             image_url = image.upload_image(image_url)
 
-        print(f"Generated artwork available at this url: {image_url}")
-        return f"Generated artwork available at this url: {image_url}"
+        print(f"Successfully Generated artwork: {image_url}")
+        return f"Successfully generated artwork: {image_url}"
 
     except Exception as e:
         return f"Error generating artwork: {str(e)}"
@@ -733,37 +733,36 @@ def dao_agent(instructions: str ):
     ],
 )
 
-def gm_agent(instructions: str, name: str = "GM" ): 
+def gm_agent(instructions: str, name: str = "GM", off_chain: bool = True): 
     print(f"\033[93mGame master:\033[0m\n{instructions}")
-    return Agent(
-    name=name,
-    instructions=instructions,
-    model="gpt-4o-mini",
-    functions=[
-        generate_art,  # Uncomment this line if you have configured the OpenAI API
+    on_chain_functions = [
         get_dao_proposals,
         get_dao_proposal,
-
-    ],
-)
-
-def player_agent(instructions: str, name: str = "Player" ): 
+    ]
+    functions = [generate_art] 
+    if not off_chain:
+        functions.extend(on_chain_functions)
     return Agent(
-    name=name,
-    instructions=instructions,
-    model="gpt-4o-mini",
-    functions=[
-        # get_balance,
-        # get_agent_address,
-        generate_art,  # Uncomment this line if you have configured the OpenAI API
+        name=name,
+        instructions=instructions,
+        model="gpt-4o-mini",
+        functions=functions
+    )
+
+def player_agent(instructions: str, name: str = "Player", off_chain: bool = True): 
+    on_chain_functions = [
         submit_dao_proposal_onchain,
         vote_onchain,
-        # get_dao_proposal,
-        # get_all_memories,
-        # get_knowledge_by_keywords
-
-    ],
-)
+    ]
+    functions = [generate_art] 
+    if not off_chain:
+        functions.extend(on_chain_functions)
+    return Agent(
+        name=name,
+        instructions=instructions,
+        model="gpt-4o-mini",
+        functions=functions,
+    )
 
 
 # Initialize FarcvasterBot with your credentials

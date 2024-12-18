@@ -11,13 +11,6 @@ def cli():
     """
     pass
 
-# mode_functions = {
-#         'chat': lambda: run_demo_loop(dao_agent(instructions)),
-#         'auto': lambda: run_autonomous_loop(dao_agent(instructions)),
-#         'two-agent': lambda: run_openai_conversation_loop(dao_agent(instructions)),
-#         'dao-simulation': lambda: run_dao_simulation_loop()
-#     }
-
 @cli.command()
 @click.option(
     "--character-file",
@@ -125,6 +118,14 @@ def create_wallet():
     """
     from dao_agent_demo.create_wallet import main
     main(prefix="PLAYER_")
+
+@cli.command()
+def create_sim():
+    """
+    Create a new world simulation
+    """
+    from dao_agent_demo.create_sim import main
+    main()
 
 def run():
     cli()

@@ -9,13 +9,11 @@ from dao_agent_demo.prompt_helpers import (
 
 from dotenv import dotenv_values
 
-config = dotenv_values(".env")
+config = dotenv_values("../.env")
 
-DAO_ADDRESS = os.getenv("TARGET_DAO")
+DAO_ADDRESS = os.getenv("TARGET_DAO", "")
 
-
-
-def generate_summary(game_context, world_context, players, gm, client, **kwargs):
+def generate_summary(game_context, world_context, players, gm, client, off_chain, **kwargs):
     # Include narrative context for continuity (last 10 entries)
     recent_narratives = game_context["narrative"][-20:] if game_context["narrative"] else [{"description": "The story is just beginning."}]
     recent_narrative_descriptions = " ".join(entry["description"] for entry in recent_narratives)
@@ -23,7 +21,7 @@ def generate_summary(game_context, world_context, players, gm, client, **kwargs)
     # 1a. Generate a Summary of the Narrative
     print("\n\033[93m1a. Generate a Summary (GM Phase):\033[0m")
 
-    summary_length = max(3, min(20, game_context["round"]))
+    summary_length = max(5, min(20, game_context["round"]))
 
     summary_input = {
         "role": "user",
@@ -42,7 +40,7 @@ def generate_summary(game_context, world_context, players, gm, client, **kwargs)
     update_narrative(game_context, gm_situation=game_context["narrative_summary"], summary_only=True)
     return game_context
 
-def introduce_scenario(game_context, world_context, players, gm, client, **kwargs):
+def introduce_scenario(game_context, world_context, players, gm, client, off_chain, **kwargs):
 
     # TODO check for current proposals that have not been voted on
     # save current proposal id in game context
@@ -78,7 +76,7 @@ def introduce_scenario(game_context, world_context, players, gm, client, **kwarg
     return game_context
 
 
-def deliberation(game_context, world_context, players, gm, client, **kwargs):
+def deliberation(game_context, world_context, players, gm, client, off_chain, **kwargs):
     if "new_scenario" not in game_context:
         raise ValueError("New scenario is required for deliberation phase.")
     if "narrative_summary" not in game_context:
@@ -106,7 +104,7 @@ def deliberation(game_context, world_context, players, gm, client, **kwargs):
         update_narrative(game_context, gm_situation=deliberation_response.messages[-1]["content"])
     return game_context
 
-def soft_signal(game_context, world_context, players, gm, client, **kwargs):
+def soft_signal(game_context, world_context, players, gm, client, off_chain, **kwargs):
     if "new_scenario" not in game_context:
         raise ValueError("New scenario is required for soft signal phase.")
     if "suggestions" not in game_context:
@@ -146,7 +144,7 @@ def soft_signal(game_context, world_context, players, gm, client, **kwargs):
     return game_context
 
 
-def negotiation(game_context, world_context, players, gm, client, **kwargs):
+def negotiation(game_context, world_context, players, gm, client, off_chain, **kwargs):
     if "new_scenario" not in game_context:
         raise ValueError("New scenario is required for negotiation phase.")
     if "suggestions" not in game_context:
@@ -178,7 +176,7 @@ def negotiation(game_context, world_context, players, gm, client, **kwargs):
         game_context["negotiations"][voter.name] = compromise
     return game_context
 
-def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
+def submit_proposal(game_context, world_context, players, gm, client, off_chain, **kwargs):
 
     turn_order = game_context["turn_order"]
     current_turn = game_context["current_turn"]
@@ -196,21 +194,26 @@ def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
             f"World Context: {json.dumps(world_context)}.\n"
             f"Scenario: {game_context['new_scenario']}.\n"
             f"Negotiations: {json.dumps(game_context['negotiations'])}.\n"
-            "generate art based on your proposal\n"
             "Focus on one clear, decisive action and be aligned with your character's beliefs.\n"
             "Your response should be in the following json format:\n"
             "{\n"
                '"proposal_title": "The proposal title.",\n'
-               '"proposal_description": "The proposal description in markdown format with generated art.",\n'
-               '"proposal_id": "the returned proposal id.",\n'
-               '"proposal_link": "The link to the art you generate.",\n'
+               '"proposal_description": "The proposal description in markdown format.",\n'
+               '"proposal_id": "proposal id.",\n'
+               '"proposal_link": "generate art for link",\n'
             "}\n"
             "Do not include any additional text or explanations. Only provide the response in this format.\n"
-            "Do not use a place holder url for the art, generate the art and provide the link."
+            )
+    }
+    if not off_chain:
+        proposal_input["content"] += (
             "The only function to call is submit_dao_proposal_onchain."
             "Based on the negotiations and scenario submit a new proposal onchain only once (submit_dao_proposal_onchain(proposal_title: str, proposal_description: str, proposal_link: str)).\n"
         )
-    }
+    else:
+        proposal_input["content"] += (
+            "Submit a new proposal with id 0"
+            )
     proposal_response = client.run(agent=player.agent, messages=[proposal_input], stream=False, context_variables={"agent_key":player.key})
 
     proposal_messages = proposal_response.messages
@@ -230,12 +233,13 @@ def submit_proposal(game_context, world_context, players, gm, client, **kwargs):
         except TypeError as e:
             pass
     
-    print(f"\n\033[93mProposal URL:\033[0m https://admin.daohaus.fun/#/molochv3/0x2105/{DAO_ADDRESS}/proposal/{game_context['current_proposal_id']}" )
+    if not off_chain:
+        print(f"\n\033[93mProposal URL:\033[0m https://admin.daohaus.fun/#/molochv3/0x2105/{DAO_ADDRESS}/proposal/{game_context['current_proposal_id']}" )
     # add proposal id
     return game_context
 
 
-def voting(game_context, world_context, players, gm, client, **kwargs):
+def voting(game_context, world_context, players, gm, client, off_chain, **kwargs):
     # get proposal id and current proposal off game context
     if "current_proposal" not in game_context:
         ("Current proposal is required for voting phase.")
@@ -265,9 +269,7 @@ def voting(game_context, world_context, players, gm, client, **kwargs):
                 f"Proposal: {game_context['current_proposal']}.\n"
                 f"Proposal ID: {game_context['current_proposal_id']}.\n"
                 f"Scenario: {json.dumps(game_context['new_scenario'])}.\n"
-                "vote_onchain using the proposal ID. factor in your personal goals, and your relationship with the proposer.\n"
                 "Be decisive in your vote and explicitly state your choice (Yes, No, or Abstain), only vote Yes if you strongly support the proposal,"
-                "Do not submit a proposal! the only function to call is vote_onchain. Do not vote more than once.\n"
                 "Consider the following:\n"
                 f"- The proposer of this proposal is {voter.name}. Your current relationship with them is {relationship_value}.\n"
                 "- Do not vote no on your own proposal.\n"
@@ -276,6 +278,12 @@ def voting(game_context, world_context, players, gm, client, **kwargs):
                 "Explain your reasoning succinctly in a few sentences. Do not submit a proposal just vote."
             )
         }
+        if not off_chain:
+            vote_input["content"] += (
+                "The only function to call is vote_onchain(proposal_id: int, vote: str).\n"
+                "vote_onchain using the proposal ID. factor in your personal goals, and your relationship with the proposer.\n"
+                "Do not submit a proposal! the only function to call is vote_onchain. Do not vote more than once.\n"
+            )
         print("\n\033[93mVoter:\033[0m", voter.name, voter.key)
         vote_response = client.run(agent=voter.agent, messages=[vote_input], context_variables={"agent_key":voter.key}, stream=False)
 
@@ -292,7 +300,7 @@ def voting(game_context, world_context, players, gm, client, **kwargs):
 
     return game_context
 
-def resolve_round(game_context, world_context, players, gm, client, **kwargs):
+def resolve_round(game_context, world_context, players, gm, client, off_chain, **kwargs):
     if "votes" not in game_context:
         print("Votes are required for round resolution.")
         return game_context
@@ -301,7 +309,7 @@ def resolve_round(game_context, world_context, players, gm, client, **kwargs):
     return game_context
 
 
-def round_resolution(game_context, world_context, players, gm, client, **kwargs):
+def round_resolution(game_context, world_context, players, gm, client, off_chain, **kwargs):
     if game_context["last_decision"] == "Proposal Passed":
         roll_result = roll_d20()
         print("\033[1mThe proposal passed but did it do what it was supposed to do?\033[0m")
@@ -337,10 +345,21 @@ def round_resolution(game_context, world_context, players, gm, client, **kwargs)
     # If the proposal failed, add a generic failure message to the narrative
     else:
         gm_message_content = (
-            f"Result: The proposal failed to gain enough support. Factional tensions rise, leaving the challenge unresolved."
+            f"The proposal failed to gain enough support. Factional tensions rise, leaving the challenge unresolved."
         )
 
-    proposal_resolution = client.run(agent=gm.agent, messages=[{"role": "user", "content": gm_message_content},], stream=False)
+    proposal_resolution = client.run(agent=gm.agent, messages=[
+        {
+            "role": "user", 
+            "content": (
+                f"Narrative Summary: {game_context['narrative_summary']}.\n"
+                f"Current Scenario: {json.dumps(game_context['new_scenario'])}.\n"
+                f"Proposal: {game_context['current_proposal']}.\n"
+                f"Result: {gm_message_content}"
+                "Based on the result of the proposal, provide a narrative resolution to the round. "
+            )
+        },
+        ], stream=False)
     proposal_resolution_messages = proposal_resolution.messages
     pretty_print_messages(proposal_resolution_messages)
     update_narrative(game_context, gm_situation=proposal_resolution_messages[-1]["content"])
