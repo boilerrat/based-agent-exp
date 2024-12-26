@@ -112,7 +112,7 @@ def run_simulation(
     )
 
 @cli.command()
-def create_wallet():
+def create_wallet(num_players: int):
     """
     Create a set of wallet for the DAO Agents
     """
@@ -120,12 +120,19 @@ def create_wallet():
     main(prefix="PLAYER_")
 
 @cli.command()
-def create_sim():
+@click.option(
+    "--num-players",
+    type=int,
+    help="Number of players to create",
+    default=3,
+    show_default=True
+)   
+def create_sim(num_players: int):
     """
     Create a new world simulation
     """
     from dao_agent_demo.create_sim import main
-    main()
+    main(num_players=3)
 
 def run():
     cli()
