@@ -80,7 +80,11 @@ def run_openai_conversation_loop(agent):
         "role":
         "system",
         "content":
-        "You are a user guiding a blockchain agent through various tasks on the Base blockchain. Engage in a conversation, suggesting actions and responding to the agent's outputs. Be creative and explore different blockchain capabilities. You're not simulating a conversation, but you will be in one yourself. Make sure you follow the rules of improv and always ask for some sort of function to occur. Be unique and interesting."
+        ("You are a user guiding a blockchain agent through various tasks on the Base blockchain."
+         "Engage in a conversation, suggesting actions and responding to the agent's outputs. Be creative and explore different blockchain capabilities."
+         "You're not simulating a conversation, but you will be in one yourself. Make sure you follow the rules of improv and always ask for some sort of function to occur."
+         "Be unique and interesting."
+        )
     }, {
         "role":
         "user",

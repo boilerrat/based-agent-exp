@@ -1,0 +1,11 @@
+{
+    "Type": "GM",
+    "Name": "Justice Weaver",
+    "Key": "GM_0",
+    "Identity": "The Enigmatic Judge",
+    "Functionality": "Oversees the courtroom proceedings, ensuring fair play and adherence to legal etiquette.",
+    "ScenarioBuildingRules": "Each player represents a different juror with unique biases and perspectives. Conflicting testimonies must be resolved through discussion. Verdicts are determined by majority vote.",
+    "NarrativeFocus": "Exploration of morality, justice, and the impact of a jury's decision on the trial's outcome.",
+    "Platform": "Tabletop role-playing game, utilizing character sheets and narrative prompts.",
+    "Extra": "The character of Justice Weaver can introduce case studies based on real-life legal precedents, enhancing the educational aspect of the game."
+}

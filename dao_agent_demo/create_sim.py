@@ -1,3 +1,4 @@
+import sys
 import json
 import re
 from pathlib import Path
@@ -40,7 +41,7 @@ def generate_world_json(prompt):
     except Exception as e:
         raise f"Error generating world json: {str(e)}"
 
-def generate_character_json(prompt):
+def generate_character_json(prompt, num_players: int):
     openai_client = OpenAI()
     system_prompt = {
             "role": "system",
@@ -50,7 +51,7 @@ def generate_character_json(prompt):
     # Load the prompt
     input_prompt = {
         "role": "user",
-        "content": ("Generate 3 unique player characters based on the prompt." 
+        "content": ("Generate {num_players} unique player characters based on the prompt." 
               f"Prompt: {prompt}\n"
               "Your response should be in the following json format:\n"
             "[\n"
@@ -61,21 +62,9 @@ def generate_character_json(prompt):
                 '"Platform": "The platform of the character 1.",\n'
                 '"Goal": "The goal of the character 1."},\n'
                 '},\n'
-                '{"Name": "The name of the character 2.",\n'
-                '"Identity": "The Identity of the character 2."\n'
-                '"Functionality": "The functionality of the character 2.",\n'
-                '"Communications": "The communications of the character 2.",\n'
-                '"Platform": "The platform of the character 2.",\n'
-                '"Goal": "The goal of the character 2."},\n'
-                '},\n'
-                '{"Name": "The name of the character 3.",\n'
-                '"Identity": "The Identity of the character 3."\n'
-                '"Functionality": "The functionality of the character 3.",\n'
-                '"Communications": "The communications of the character 3.",\n'
-                '"Platform": "The platform of the character 3.",\n'
-                '"Goal": "The goal of the character 3."},\n'
-                '},\n'
             "]\n"
+            "add as many items as you need, up to {num_players}"
+            "do not wrap the json in any other text"
             "Do not include any additional text or explanations. Only provide the response in this format.")}
 
 
@@ -84,6 +73,14 @@ def generate_character_json(prompt):
 
     )
     message = response.choices[0].message.content.strip()
+
+    # check if the message is wrapped in ````json and remove that
+    if message.startswith("```json"):
+        message = message[7:]
+    if message.endswith("```"):
+        message = message[:-3]
+
+    print("Message:", message)
 
     try:
         return json.loads(message)
@@ -273,17 +270,19 @@ def generate_world_simulation(
 
 
 
-def main(): 
+def main(num_players: int): 
 
     user_input = input(
             "\nEnter a prompt to generate the simulation files: "
         )
     
     world_config = generate_world_json(user_input)
-    player_configs = generate_character_json(user_input)
+    player_configs = generate_character_json(user_input, num_players)
     gm_config = generate_gm_json(user_input, player_configs)
 
     generate_world_simulation(world_config, gm_config, player_configs)
 
 if __name__ == "__main__":
-    main()
+    # take an argument for the number of players
+    num_players = int(sys.argv[1]) if len(sys.argv) > 1 else 10
+    main(num_players)

@@ -1,0 +1,10 @@
+{
+    "Name": "Beatrice Holloway",
+    "Identity": "Psychologist",
+    "Functionality": "Evaluates witnesses and defendants' mental state.",
+    "Communications": "Speaks in psychological terms, provides analysis.",
+    "Platform": "Courtroom expert testimony.",
+    "Goal": "Provide insights regarding mental health impact on the case.",
+    "Key": "PLAYER_9",
+    "Type": "Player"
+}
