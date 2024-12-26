@@ -1,27 +1,26 @@
+import os
 import time
 import json
 import random
 import sys
-import logging
-
 from swarm import Swarm
 from swarm.repl import run_demo_loop
-from agents import dao_agent, check_recent_cast_notifications
 from openai import OpenAI
 
-from prompt_helpers import set_character_file, get_character_json, get_instructions
-from interval_utils import get_interval, set_random_interval
+from dao_agent_demo.agents import dao_agent, gm_agent, player_agent, check_recent_cast_notifications
+from dao_agent_demo.logs import pretty_print_messages
+from dao_agent_demo.prompt_helpers import (
+    set_character_file, get_character_json, get_instructions, dao_simulation_setup, 
+    extract_vote, check_alignment, update_narrative, roll_d20,
+    get_instructions_from_file, resolve_round_with_relationships
+    )
+from dao_agent_demo.interval_utils import get_interval, set_random_interval
+import dao_agent_demo.sim_phases as sim_phases
+from dao_agent_demo.worlds import fetch_world_files
 
 
-lower_interval = 60
-upper_interval = 120
-
-# Configure logging
-logging.basicConfig(
-    filename="streaming_response.log",
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+lower_interval = 20
+upper_interval = 100
 
 # this is the main loop that runs the agent in autonomous mode
 # you can modify this to change the behavior of the agent
@@ -92,7 +91,7 @@ def run_openai_conversation_loop(agent):
     while True:
         # Generate OpenAI response
         openai_response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo", messages=openai_messages)
+            model="gpt-4o-mini", messages=openai_messages)
 
         openai_message = openai_response.choices[0].message.content
         print(f"\n\033[92mOpenAI Guide:\033[0m {openai_message}")
@@ -122,6 +121,121 @@ def run_openai_conversation_loop(agent):
         if user_input.lower() == 'exit':
             break
 
+def run_dao_simulation_loop(world=None, off_chain=False):
+    """
+    Runs the DAO governance simulation loop.
+    """
+    # Initialize Swarm and OpenAI clients
+    client = Swarm()
+    
+    if not world:
+        world = choose_world()
+    print(f"Selected world: {world}")
+    print(f"On-chain actions: {'Active' if not off_chain else 'Inactive'}")
+
+    (initial_context, players, gm) = dao_simulation_setup(world)
+    game_context = initial_context["Initial"].copy()
+    world_context = initial_context["World"].copy()
+    simulation_steps = initial_context["Phases"]
+    current_turn = game_context["current_turn"]  # Start with the first player in the turn order
+
+    print("Starting DAO governance simulation...")
+
+    # verify on_chain reqs if one doesn't exists default to off_chain. .env WEB3_PROVIDER_URI, TARGET_DAO, AGENT_ADDR
+    if not off_chain:
+        if not os.getenv("TARGET_DAO"):
+            print("Error: On-chain mode requires the following environment variables to be set: TARGET_DAO")
+            print("See README.md for more information. Defaulting to off-chain mode.")
+            off_chain = True
+        for player in players:
+            try:
+                player.set_address(os.getenv(f"{player.key}_AGENT_ADDR"))
+            except:
+                print(f"Error: {player.key}_AGENT_ADDR not set. Defaulting to off-chain mode.")
+                off_chain = True
+                break
+
+    # Set agents for the GM and players
+    gm.set_agent(gm_agent(gm.get_sim_instructions_from_json(), gm.name, off_chain))
+    for player in players:
+        player.set_agent(player_agent(player.get_sim_instructions_from_json(), player.name, off_chain))
+        
+     # Initialize extra arguments
+    extra_args = {}
+
+    while True:
+        
+        for step in simulation_steps:
+            print(f"\n\033[93mExecuting Phase: {step}\033[0m")
+            
+            # Dynamically load the phase function from `phases.py`
+            phase_function = getattr(sim_phases, step, None)
+            if callable(phase_function):
+                game_context = phase_function(game_context, world_context, players, gm, client, off_chain, **extra_args)
+
+                # Dynamically add extra arguments
+                # if step == "introduce_scenario":
+                #     extra_args["incentives"] = {"bonus": 50}
+            else:
+                print(f"\033[91mError: Phase '{step}' is not defined.\033[0m")
+                break
+        
+        print(f"\n\033[93mFinal Results:\033[0m {json.dumps(game_context, indent=2)}")
+        print(f"\n\033[93mRelationship Results:\033[0m {json.dumps(game_context['relationships'], indent=2)}")
+        print(f"\n\033[93mResource Results:\033[0m {json.dumps(game_context['resources'], indent=2)}")
+
+
+        # Advance turn order
+        current_turn = (current_turn + 1) % len(players)
+        game_context["current_turn"] = current_turn
+        game_context["round"] += 1
+
+        # Check if simulation should continue
+        user_input = input("\nPress Enter to continue to the next round, or type 'exit' to end: ")
+        if user_input.lower() == 'exit':
+            break
+
+
+def choose_world(folder_path = "worlds"):
+    """
+    Lists files in a folder and allows the user to choose one.
+
+    Args:
+        folder_path (str): Path to the folder containing world files.
+
+    Returns:
+        str: The selected file name.
+    """
+    while True:
+        try:
+            # List files in the folder
+            files = fetch_world_files(folder_path)
+
+            print("\nAvailable Worlds:")
+            for idx, file_name in enumerate(files, start=1):
+                print(f"{idx}. {file_name}")
+
+            # Ask the user to choose a file
+            choice = input("\nChoose a world by number or name: ").strip()
+
+            # Handle numeric input
+            if choice.isdigit():
+                index = int(choice) - 1
+                if 0 <= index < len(files):
+                    return folder_path + "/" + files[index]
+                else:
+                    print("Invalid number. Please try again.")
+            # Handle name input
+            elif choice in files:
+                print(f"Selected world: {folder_path}/{choice}")
+                return folder_path + "/" + choice
+            else:
+                print("Invalid choice. Please try again.")
+
+        except FileNotFoundError:
+            print(f"Error: The folder '{folder_path}' does not exist.")
+            return None
+
 
 def choose_mode():
     while True:
@@ -129,6 +243,7 @@ def choose_mode():
         print("1. chat    - Interactive chat mode")
         print("2. auto    - Autonomous action mode")
         print("3. two-agent - AI-to-agent conversation mode")
+        print("4. dao-simulation - DAO simulation mode")
 
         choice = input(
             "\nChoose a mode (enter number or name): ").lower().strip()
@@ -137,9 +252,11 @@ def choose_mode():
             '1': 'chat',
             '2': 'auto',
             '3': 'two-agent',
+            '4': 'dao-simulation',
             'chat': 'chat',
             'auto': 'auto',
-            'two-agent': 'two-agent'
+            'two-agent': 'two-agent',
+            'dao-simulation': 'dao-simulation'
         }
 
         if choice in mode_map:
@@ -159,10 +276,8 @@ def process_and_print_streaming_response(response):
         if "content" in chunk and chunk["content"] is not None:
             if not content and last_sender:
                 print(f"\033[94m{last_sender}:\033[0m", end=" ", flush=True)
-                logging.info(f"{last_sender}: ")  # Log sender
                 last_sender = ""
             print(chunk["content"], end="", flush=True)
-            logging.info(chunk["content"])  # Log content
             content += chunk["content"]
 
         if "tool_calls" in chunk and chunk["tool_calls"] is not None:
@@ -172,51 +287,25 @@ def process_and_print_streaming_response(response):
                 if not name:
                     continue
                 print(f"\033[94m{last_sender}: \033[95m{name}\033[0m()")
-                logging.info(f"{last_sender}: {name}()")  # Log tool calls
 
         if "delim" in chunk and chunk["delim"] == "end" and content:
             print()  # End of response message
-            logging.info("End of response.")  # Log end of response
             content = ""
 
         if "response" in chunk:
-            logging.info("Response complete.")  # Log response completion
             return chunk["response"]
 
 
-def pretty_print_messages(messages) -> None:
-    for message in messages:
-        if message["role"] != "assistant":
-            continue
-
-        # print agent name in blue
-        print(f"\033[94m{message['sender']}\033[0m:", end=" ")
-
-        # print response, if any
-        if message["content"]:
-            print(message["content"])
-
-        # print tool calls in purple, if any
-        tool_calls = message.get("tool_calls") or []
-        if len(tool_calls) > 1:
-            print()
-        for tool_call in tool_calls:
-            f = tool_call["function"]
-            name, args = f["name"], f["arguments"]
-            arg_str = json.dumps(json.loads(args)).replace(":", "=")
-            print(f"\033[95m{name}\033[0m({arg_str[1:-1]})")
-
-
-def main(mode):
+def main(mode): 
 
     mode = mode or choose_mode()
     instructions = get_instructions()
-    print(instructions)
 
     mode_functions = {
         'chat': lambda: run_demo_loop(dao_agent(instructions)),
         'auto': lambda: run_autonomous_loop(dao_agent(instructions)),
-        'two-agent': lambda: run_openai_conversation_loop(dao_agent(instructions))
+        'two-agent': lambda: run_openai_conversation_loop(dao_agent(instructions)),
+        'dao-simulation': lambda: run_dao_simulation_loop()
     }
 
     print(f"\nStarting {mode} mode...")
@@ -235,3 +324,4 @@ if __name__ == "__main__":
         set_character_file(character_file_path)
     print(f"Starting DAO Agent ({character_file_path})...")
     main(mode)
+

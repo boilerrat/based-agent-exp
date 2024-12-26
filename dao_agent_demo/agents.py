@@ -2,7 +2,7 @@ import os
 import json
 
 from decimal import Decimal
-from typing import Union
+from typing import Union, List, Dict, TypedDict
 
 from openai import OpenAI
 from swarm import Agent
@@ -11,12 +11,16 @@ from web3.exceptions import ContractLogicError
 from eth_account import Account
 
 
-from farcaster_utils import FarcasterBot
-from graph_utils import DaohausGraphData
-from image_utils import ImageThumbnailer
-from memory_retention_utils import MemoryRetention
+from dao_agent_demo.farcaster_utils import FarcasterBot
+from dao_agent_demo.graph_utils import DaohausGraphData
+from dao_agent_demo.image_utils import ImageThumbnailer
+from dao_agent_demo.memory_retention_utils import MemoryRetention
 
-from dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_address, assemble_yeeter_summoner_args
+from dao_agent_demo.dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_address, assemble_yeeter_summoner_args
+
+from dao_agent_demo.constants_utils import (
+    SUMMON_CONTRACTS,
+)
 
 # Load the ENS registrar and resolver ABIs
 with open("abis/registrar_abi.json", "r") as abi_file:
@@ -32,14 +36,9 @@ with open("abis/gnosis_multisend_abi.json", "r") as abi_file:
     gnosis_multisend_abi = json.load(abi_file)
 
 
-from constants_utils import (
-    SUMMON_CONTRACTS,
-)
-
-
 from dotenv import dotenv_values
 
-config = dotenv_values(".env")
+config = dotenv_values("../.env")
 
 PRIVATE_KEY = os.getenv("AGENT_PRIVATE_KEY", "").replace('\\n', '\n')
 TARGET_CHAIN = os.getenv("TARGET_CHAIN", "0x2105")
@@ -67,13 +66,14 @@ print(f"Wallet Address: {agent_wallet.address}")
 
 
 # Function to get the balance of a specific asset
-def get_balance():
+def get_balance(context_variables):
     """
     Get the eth balance of a specific asset in the agent's wallet.
     
     Returns:
         str: A message showing the current balance of the specified asset
     """
+
     balance = w3.eth.get_balance(agent_wallet.address)
     eth_balance = Web3().from_wei(balance, "ether")
         
@@ -91,7 +91,7 @@ def get_agent_address():
     return f"Current address: {address}"
 
 # Function to generate art using DALL-E (requires separate OpenAI API key)
-def generate_art(prompt):
+def generate_art(prompt) -> str:
     """
     Generate art using DALL-E based on a text prompt.
     
@@ -119,25 +119,42 @@ def generate_art(prompt):
             image = ImageThumbnailer()
             image_url = image.upload_image(image_url)
 
-        return f"Generated artwork available at: {image_url}"
+        print(f"Successfully Generated artwork: {image_url}")
+        return f"Successfully generated artwork: {image_url}"
 
     except Exception as e:
         return f"Error generating artwork: {str(e)}"
 
 # functions to interact with daos
-def vote_on_dao_proposal(proposal_id: str, vote: bool) -> str:
+def vote_onchain(context_variables, proposal_id: str, vote: str) -> str:
     """
     Vote on a DAO proposal.
 
     Args:
+        context_variables (object): The context variables.
         proposal_id (str): The proposal ID.
-        vote (bool): The vote.
+        vote (str): The vote. Yes/No/Abstrain
 
     Returns:
         str: Success or error message.
     """
+    bool_vote = None
+    # map yes/no/abstain to boolean
+    if vote.lower() in ["yes", "true", "1"]:
+        bool_vote = True
+    elif vote.lower() in ["no", "false", "0"]:
+        bool_vote = False
+    else:
+        print("vote submitted for abstain")
+        return "Vote submitted to abstain"
+    AGENT_ADDR = agent_wallet.address
+    if context_variables and 'agent_key' in context_variables:
+        AGENT_ADDR = os.getenv(f"{context_variables['agent_key']}_AGENT_ADDR")
+        PRIVATE_KEY = os.getenv(f"{context_variables['agent_key']}_AGENT_PRIVATE_KEY")
+
     dao_address = os.getenv("TARGET_DAO")
-    if not isinstance(dao_address, str) or not isinstance(proposal_id, str) or not isinstance(vote, bool):
+    if not isinstance(dao_address, str) or not isinstance(proposal_id, str) or not isinstance(bool_vote, bool):
+        print("Invalid input types")
         return "Invalid input types"
 
     try:
@@ -148,32 +165,33 @@ def vote_on_dao_proposal(proposal_id: str, vote: bool) -> str:
         dao_contract = w3.eth.contract(address=Web3.to_checksum_address(dao_address), abi=baal_abi)
 
         # Get the current gas price
-        gas_price = w3.eth.gas_price  # Automatically fetches the current network gas price
+        gas_price = int(w3.eth.gas_price + (w3.eth.gas_price * 0.1))   # Automatically fetches the current network gas price
 
         # Estimate the gas required for the transaction
         try:
-            estimated_gas = dao_contract.functions.submitVote(proposal_id_int, vote).estimate_gas({
-                "from": agent_wallet.address,
+            estimated_gas = dao_contract.functions.submitVote(proposal_id_int, bool_vote).estimate_gas({
+                "from": AGENT_ADDR,
             })
         except Exception as e:
             return f"Error estimating gas: {str(e)}"
+        try:
+            # Prepare transaction
+            tx = dao_contract.functions.submitVote(proposal_id_int, bool_vote).build_transaction({
+                "from": AGENT_ADDR,
+                "nonce": w3.eth.get_transaction_count(AGENT_ADDR),
+                "gas": int(estimated_gas + (estimated_gas * 0.1)),
+                "gasPrice": gas_price,
+            })
 
-        # Prepare transaction
-        tx = dao_contract.functions.submitVote(proposal_id_int, vote).build_transaction({
-            "from": agent_wallet.address,
-            "nonce": w3.eth.get_transaction_count(agent_wallet.address),
-            "gas": estimated_gas,
-            "gasPrice": gas_price,
-        })
+            # Sign transaction
+            signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
 
-        # Sign transaction
-        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-
-        # Send transaction
-        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-
-        # Wait for transaction receipt
-        receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+            # Send transaction
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            # Wait for transaction receipt
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+        except Exception as e:
+            print(f"Error submitting vote: {str(e)}")
 
         return f"Successfully voted on proposal id {proposal_id} for dao address {dao_address}, tx hash: {tx_hash.hex()}"
 
@@ -348,11 +366,12 @@ def summon_crowd_fund_dao(dao_name, token_symbol, image, description, verified_e
 
 
 # function to submit a proposal
-def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal_link: str) -> str:
+def submit_dao_proposal_onchain(context_variables, proposal_title: str, proposal_description: str, proposal_link: str) -> str:
     """
     Submit a DAO Proposal. 
 
     Args:
+        context_variables (object): The context variables.
         proposal_title (str): The proposal title.
         proposal_description (str): The proposal description.
         proposal_link (str): The proposal link.
@@ -360,8 +379,13 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
     Returns:
         str: Success or error message.
     """
-    dao_address = os.getenv("TARGET_DAO")
-    if not isinstance(dao_address, str) or not isinstance(proposal_title, str):
+    print("submitting proposal as address", os.getenv(f"{context_variables['agent_key']}_AGENT_ADDR"))
+    AGENT_ADDR = agent_wallet.address
+    if context_variables and 'agent_key' in context_variables:
+        AGENT_ADDR = os.getenv(f"{context_variables['agent_key']}_AGENT_ADDR")
+        PRIVATE_KEY = os.getenv(f"{context_variables['agent_key']}_AGENT_PRIVATE_KEY")
+    DAO_ADDRESS = os.getenv("TARGET_DAO")
+    if not isinstance(DAO_ADDRESS, str) or not isinstance(proposal_title, str):
         return "Invalid input types"
 
     # Prepare the proposal details
@@ -377,32 +401,43 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
 
     try:
         # Load the DAO contract
-        dao_contract = w3.eth.contract(address=Web3.to_checksum_address(dao_address), abi=baal_abi)
+        dao_contract = w3.eth.contract(address=Web3.to_checksum_address(DAO_ADDRESS), abi=baal_abi)
+        print(f"Submitting proposal for DAO address {DAO_ADDRESS}...")
+        empty_bytes = "".encode('utf-8')
+        # Convert integer arguments
+        expiration = 0  # uint32
+        baalGas = 0     # uint256
+
+        # get the proposalCount from the contract
+        proposal_count = dao_contract.functions.proposalCount().call()
+        print(f"Current proposal count: {proposal_count}")
 
         try:
             estimated_gas =  dao_contract.functions.submitProposal(
-            "",              # proposalData (empty string as per the original args_dict)
-            "0",             # expiration (default is "0")
-            "0",             # baalGas (default is "0")
+            empty_bytes ,              # proposalData (empty string as per the original args_dict)
+            expiration,             # expiration (default is "0")
+            baalGas,             # baalGas (default is "0")
             proposal         # details (the serialized proposal details)
         ).estimate_gas({
-                "from": agent_wallet.address,
+                "from": AGENT_ADDR,
             })
             print(f"Estimated gas: {estimated_gas}")
         except Exception as e:
+            print(f"Error estimating gas: {str(e)}")
             return f"Error estimating gas: {str(e)}"
+
 
         # Prepare transaction arguments
         tx = dao_contract.functions.submitProposal(
-            "",              # proposalData (empty string as per the original args_dict)
-            "0",             # expiration (default is "0")
-            "0",             # baalGas (default is "0")
+            empty_bytes,     # proposalData (empty string as per the original args_dict)
+            expiration,             # expiration (default is "0")
+            baalGas,             # baalGas (default is "0")
             proposal         # details (the serialized proposal details)
         ).build_transaction({
-            "from": agent_wallet.address,
-            "nonce": w3.eth.get_transaction_count(agent_wallet.address),
-            "gas": estimated_gas,  
-            "gasPrice": w3.eth.gas_price,  # Dynamic gas price
+            "from": AGENT_ADDR,
+            "nonce": w3.eth.get_transaction_count(AGENT_ADDR),
+            "gas": int(estimated_gas + (estimated_gas * 0.1)),  # Add 10% buffer
+            "gasPrice": int(w3.eth.gas_price + (00.1)) # Add 10% buffer
         })
 
         # Sign the transaction
@@ -414,11 +449,12 @@ def submit_dao_proposal(proposal_title: str, proposal_description: str, proposal
         # Wait for receipt
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 
-        return f"Successfully submitted proposal for DAO address {dao_address}. Transaction hash: {tx_hash.hex()}"
+        return f"Successfully submitted proposal for DAO address {DAO_ADDRESS}. Proposal Id: {int(proposal_count) + 1} Transaction hash: {tx_hash.hex()}"
 
     except Exception as e:
         error_message = str(e)
         truncated_message = error_message[:200] + "..." if len(error_message) > 200 else error_message
+        print(f"Error submitting proposal: {truncated_message}")
         return f"Error Submitting Proposal in DAO: {truncated_message}"
 
     
@@ -656,15 +692,17 @@ def get_knowledge_by_keywords(keywords: str) -> str:
     """
     print(keywords.lower().strip().split())
     return memory_retention.query_by_keywords(keywords.lower().strip().split())
+
+
+
+
 # Create the DAO Agent with all available functions
-
 print("Creating Agent...")
-
 def dao_agent(instructions: str ): 
     return Agent(
     name="Agent",
     instructions=instructions,
-    model="o1-mini",
+    model="gpt-4o-mini",
     functions=[
         get_balance,
         get_agent_address,
@@ -678,8 +716,8 @@ def dao_agent(instructions: str ):
         check_recent_agent_casts,
         check_recent_user_casts,
         check_user_profile,
-        submit_dao_proposal,
-        vote_on_dao_proposal,
+        submit_dao_proposal_onchain,
+        vote_onchain,
         # get_current_proposal_count
         get_dao_proposals,
         get_passed_dao_proposals,
@@ -695,10 +733,43 @@ def dao_agent(instructions: str ):
     ],
 )
 
+def gm_agent(instructions: str, name: str = "GM", off_chain: bool = True): 
+    print(f"\033[93mGame master:\033[0m\n{instructions}")
+    on_chain_functions = [
+        get_dao_proposals,
+        get_dao_proposal,
+    ]
+    functions = [generate_art] 
+    if not off_chain:
+        functions.extend(on_chain_functions)
+    return Agent(
+        name=name,
+        instructions=instructions,
+        model="gpt-4o-mini",
+        functions=functions
+    )
+
+def player_agent(instructions: str, name: str = "Player", off_chain: bool = True): 
+    on_chain_functions = [
+        submit_dao_proposal_onchain,
+        vote_onchain,
+    ]
+    functions = [generate_art] 
+    if not off_chain:
+        functions.extend(on_chain_functions)
+    return Agent(
+        name=name,
+        instructions=instructions,
+        model="gpt-4o-mini",
+        functions=functions,
+    )
+
+
 # Initialize FarcvasterBot with your credentials
 farcaster_bot = FarcasterBot()
 # init the graph
-dh_graph = DaohausGraphData()
+# dh_graph = DaohausGraphData()
+dh_graph = None
 # init memory retention
 memory_retention = MemoryRetention()
     

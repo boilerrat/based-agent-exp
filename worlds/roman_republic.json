@@ -1,0 +1,49 @@
+{
+    "Type": "World",
+    "Name": "The Roman Republic",
+    "World": {
+        "name": "The Senate of Rome",
+        "location": "Rome, Italy",
+        "key_challenges": [
+            "Economic disparity causing unrest among the plebeians",
+            "Military generals accumulating unchecked power",
+            "Senators conspiring for personal gain at the expense of the republic",
+            "External threats from rival empires testing Rome's unity"
+        ]
+    },
+    "Phases": [
+        "generate_summary",
+        "introduce_scenario",
+        "deliberation",
+        "soft_signal",
+        "negotiation",
+        "submit_proposal",
+        "voting",
+        "resolve_round",
+        "round_resolution"
+    ],
+    "Initial": {
+        "resources": {
+            "treasury": 500000,
+            "legions": 5
+        },
+        "population": {
+            "plebeians": 100000,
+            "senators": 300,
+            "legionnaires": 10000
+        },
+        "relationships": {},
+        "gm": "roman_republic/consul.json",
+        "players": [
+            "roman_republic/caesar.json",
+            "roman_republic/magnus.json",
+            "roman_republic/cato_the_younger.json",
+            "roman_republic/cicero.json"
+        ],
+        "turn_order": [0, 1, 2, 3],
+        "current_proposal": "",
+        "current_turn": 0,
+        "round": 0,
+        "narrative": []
+    }
+}

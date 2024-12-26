@@ -1,4 +1,7 @@
-# DAO AI Agent Local Setup
+# Anthology AI
+> “It's not a real train, Morty. It's a story device. Literally. A literal literary device quite literally metaphorically containing us”.
+
+## DAO AI Agent Local Setup
 
 This guide outlines the steps to set up a local development environment for an AI agent that interacts with Warpcast, the Graph, and DAOs on EVM chains.
 
@@ -42,6 +45,29 @@ poetry install
 
 This installs libraries for interacting with OpenAI, and other required tools.
 
+### 4. Install `dao-agents` CLI
+```bash
+pip install -e .
+```
+
+This installs the `dao-agents` CLI binary. You can check the available commands with `dao-agents --help`
+```bash
+$ dao-agents --help
+Usage: dao-agents [OPTIONS] COMMAND [ARGS]...
+
+  DAO Agents Simulation CLI
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  auto            Run an autonomous simulation with the DAO Agent
+  chat            Run a chat with the DAO Agent
+  create-wallet   Create a set of wallet for the DAO Agents
+  run-simulation  Run a full multi-agent dao simulation session using a...
+  two-agent       Run a two-agent simulation with the DAO Agent
+```
+
 ### 4. Configure `.env` File
 Create a `.env` file and fill in the following keys:
 - `OPENAI_API_KEY` create key at https://openai.com/index/openai-api/
@@ -71,13 +97,13 @@ Refer to the documentation of respective services to generate these keys.
 cd into dao-agent-demo
 Run the wallet creation script to set up a new wallet if you didn't bring your own:
 ```bash
-python create_wallet.py
+dao-agents create-wallet
 ```
 
-This generates a new account and mnemonic. Add these values to the `.env` file.
+This generates a new account and mnemonic and stores these values to the `.env` file.
 
 ### 6. Fund the Wallet
-If interacting on-chain, fund the wallet with a small amount of eth for gas fees.
+If interacting on-chain, fund the wallets listed in the `.env` file with a small amount of eth for gas fees.
 
 ---
 
@@ -85,19 +111,20 @@ If interacting on-chain, fund the wallet with a small amount of eth for gas fees
 
 ### Start the Agent
 
-cd into dao-agent-demo
+Make sure you are in the root of the repo and run the cli command:
 
 ```bash
-python run.py
+dao-agents run-simulation --world-definition <world-definition-file>
 ```
 or to load a character
 ```bash
-python run.py <character file json>
+dao-agents chat --character-file <character-file-json>
 ```
 Options available:
 1. **Chat Mode:** Directly chat with the agent for tasks like generating proposals or interacting with DAOs.
 2. **Autonomous Mode:** The agent operates autonomously, performing actions like replying on Warpcast, creating proposals, or notifying about updates.
-3 **2 agent demo:** demo of 2 agents simulating a conversation
+3. **Two-agent demo:** demo of 2 agents simulating a conversation
+4. **DAO simulator:** pick from a list of world simulations
 
 ### Customize Agent Behavior
 Modify the `characters` folder to define:
@@ -113,13 +140,15 @@ Modify the `characters` folder to define:
 - **`run.py`:** Handles agent initialization and interval control for autonomous actions.
 - **`characters/`:** json files that define initial prompts and auto thoughts for agents
 - **`knowledge/`:** markdown files in this folder can be loaded into the knowledge base with import_knowledge.py script (file name should contain keywords ex: speedball_fair_token_launch.md)
+- **`worlds/`:** directory for world def files that seed a simulation
 
 ---
 
 ## Additional Notes
 - **Intervals:** The autonomous mode executes random actions every 5 to 60 minutes by default. This can be adjusted in `run.py`.
 - **Memory Management:** There is a tinydb json store for committing memories, use this to avoid repetitive tasks
-- **Knowledge:** You can put markdown files in the knowledge folder and run import_knowledge.py to add it to the db 
+- **Knowledge:** You can put markdown files in the knowledge folder and run `import_knowledge.py` to add it to the db 
+- **Create New Simulation:** You can create a new simulation and all the config files needed with a script `create_sim.py` it just asks for a prompt and handles the rest.
 ---
 
 For detailed configuration or additional features, refer to the helper files and modify as needed.
@@ -145,7 +174,7 @@ This is a simple lightweight framework to interact with agents using openai swar
 ## Get Started in Minutes!
 
 ### 1️⃣ Prerequisites
-- Python 3.7+
+- Python 3.10+
 
 
 
