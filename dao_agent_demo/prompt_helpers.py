@@ -1,9 +1,14 @@
 import json
 import random
+from enum import Enum, auto
 
-from dao_agent_demo.sim_agent import SimAgent
+from dao_agent_demo.agent_handler import AgentHandler
 
-character_file_json = {}
+
+class CharacterType(Enum):
+    PLAYER = "player"
+    GM = "gm"
+    OPERATOR = "operator"
 
 def roll_d20():
     """
@@ -14,87 +19,115 @@ def roll_d20():
     """
     return random.randint(1, 20)
 
-def set_character_file(file):
-    global character_file_json
-    print(f"loaded characters/{file}")
-    with open(f"characters/{file}", "r") as character_file:
+def get_character_json(file: str, character_type: str = "PLAYER") -> dict:
+    character_file_json = {}
+    print(f"loaded {file}")
+    with open(f"{file}", "r") as character_file:
         character_file_json = json.load(character_file)
-        validate_character_json(character_file_json)
-
-def get_character_json():
+        # validate_character_json(character_file_json, character_type=character_type)
     return character_file_json
 
-def get_sim_character_json(file: str, character_type: str = "player") -> dict:
-    sim_character_file_json = {}
-    print(f"loaded characters/{file}")
-    with open(f"characters/{file}", "r") as character_file:
-        sim_character_file_json = json.load(character_file)
-        validate_character_json(sim_character_file_json, character_type=character_type)
-    return sim_character_file_json
-
-def get_instructions():
-    return f"""
-    Identity: {character_file_json["Identity"]}
-    Functionality: {character_file_json["Functionality"]}
-    Communications: {character_file_json["Communications"]}
-    Friends: {character_file_json["Friends"]}
-    Interests: {character_file_json["Interests"]}
-    Platform: {character_file_json["Platform"]}
-    Extra: {character_file_json["Extra"]}
-    """
-
-def get_instructions_from_file(file_json):
-    return f"""
-    Name: {file_json["Name"]}
-    Identity: {file_json["Identity"]}
-    Functionality: {file_json["Functionality"]}
-    """
-
-def get_sim_instructions_from_json(file_json, character_type: str = "player"):
-    if character_type == "gm":
+def get_instructions_from_json(file_json, character_type: str = "PLAYER"):
+    if character_type == "GM":
         return f"""
         Name: {file_json["Name"]}
         Identity: {file_json["Identity"]}
         Functionality: {file_json["Functionality"]}
-        Communications: {file_json["Communications"]}
         ScenarioBuildingRules: {file_json["ScenarioBuildingRules"]}
         ConflictResolutionRules: {file_json["ConflictResolutionRules"]}
         NarrativeFocus: {file_json["NarrativeFocus"]}
         Platform: {file_json["Platform"]}
         Extra: {file_json["Extra"]}
         """
+    elif character_type == "OPERATOR":
+        return f"""
+        Name: {file_json["Name"]}
+        Identity: {file_json["Identity"]}
+        Functionality: {file_json["Functionality"]}
+        Platform: {file_json["Platform"]}
+        """
     else:
         return f"""
         Name: {file_json["Name"]}
         Identity: {file_json["Identity"]}
         Functionality: You have the ability to submit a dao proposal on chain and to generate art. But only do this if specifically prompted to do so.
-        Communications: {file_json["Communications"]}
         Platform: {file_json["Platform"]}
         """
 
-def get_thoughts():
+def get_thoughts(character_file_json: dict):
     return f"""
     {character_file_json["pre_autonomous_thought"]}
     {character_file_json["autonomous_thoughts"]}
     {character_file_json["post_autonomous_thought"]}
     """ 
 
-def validate_character_json(character_json, character_type: str = "player"):
-    required_fields = list()
-    if character_type == "gm":
-        required_fields = [
-            "Name", "Key", "Identity", "Functionality", "ScenarioBuildingRules",
-            "NarrativeFocus", "Platform", "Extra"
+def validate_character_json(character_json, character_type: str):
+    """
+    Validates the character JSON structure based on character type
+    
+    Args:
+        character_json (dict): The character JSON to validate
+        character_type (str): Type of character - PLAYER, GM, or OPERATOR
+    
+    Returns:
+        bool: True if valid, raises ValueError if invalid
+    """
+    # Common required fields for all character types
+    required_fields = [
+        "Key",
+        "Name",
+        "Type",
+    ]
+    
+    # Type-specific required fields
+    type_specific_fields = {
+        CharacterType.PLAYER: [
+            "alignment",
+            "relationships",
+            "resources",
+            "abilities"
+        ],
+        CharacterType.GM: [
+            "scenario_templates",
+            "resolution_methods",
+            "world_rules"
+        ],
+        CharacterType.OPERATOR: [
+            "autonomous_thoughts",
+            "pre_autonomous_thought",
+            "post_autonomous_thought",
+            "operator_functions"
         ]
-    else:
-        required_fields = [
-            "Name", "Key", "Identity", "Functionality", "Platform"
-        ]
-
-    for field in required_fields:
+    }
+    
+    if character_type not in type_specific_fields:
+        raise ValueError(f"Invalid character type: {character_type}. Must be one of: {[t.name for t in CharacterType]}")
+    
+    # Combine common and type-specific required fields
+    all_required_fields = required_fields + type_specific_fields[character_type]
+    
+    # Check for required fields
+    for field in all_required_fields:
         if field not in character_json:
-            raise ValueError(f"Missing required field: {field}")
-        
+            raise ValueError(f"Missing required field for {character_type.name}: {field}")
+    
+    # Type-specific validation
+    if character_type == CharacterType.PLAYER:
+        if not isinstance(character_json["alignment"], dict):
+            raise ValueError("Alignment must be a dictionary")
+        if not isinstance(character_json["relationships"], dict):
+            raise ValueError("Relationships must be a dictionary")
+            
+    elif character_type == CharacterType.OPERATOR:
+        if not isinstance(character_json["autonomous_thoughts"], list):
+            raise ValueError("autonomous_thoughts must be a list")
+        for thought in character_json["autonomous_thoughts"]:
+            if "text" not in thought or "weight" not in thought:
+                raise ValueError("Each autonomous thought must have 'text' and 'weight' fields")
+    
+    return True
+
+    
 def dao_simulation_setup(world_context_json: str) -> tuple:
     """
     Sets up the initial game context and characters for the DAO simulation.
@@ -109,8 +142,8 @@ def dao_simulation_setup(world_context_json: str) -> tuple:
         initial_context = json.load(world_context_file)
 
 
-    players = [SimAgent(instructions=get_sim_character_json(file)) for file in initial_context["Initial"]["players"]]
-    gm = SimAgent(instructions=get_sim_character_json(initial_context["Initial"]["gm"]))
+    players = [AgentHandler(instructions=get_character_json(file)) for file in initial_context["Initial"]["players"]]
+    gm = AgentHandler(instructions=get_character_json(initial_context["Initial"]["gm"], character_type="GM"))
 
     return initial_context, players, gm
 

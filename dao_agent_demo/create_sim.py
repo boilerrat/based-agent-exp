@@ -244,7 +244,7 @@ def generate_world_simulation(
                 try:
                     json.dump(player, player_file, indent=4)
                     print(f"Player file saved to {player_file_path}")
-                    world_player_file_path = f"{world_slug}/{character_slug}.json"
+                    world_player_file_path = f"characters/{world_slug}/{character_slug}.json"
                     world_data["Initial"]["players"].append(world_player_file_path)
                 except Exception as e:
                     print(f"Error generating character simulation: {str(e)}")

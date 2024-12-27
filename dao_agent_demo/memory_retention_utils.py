@@ -20,6 +20,26 @@ class MemoryRetention:
         print("Initializing local database...")
         self.db = TinyDB('db.json')
 
+    def mark_proposal_as_acted(self, proposal_id: int, actor: str) -> bool:
+        """
+        Mark a proposal as acted upon.
+        
+        Args:
+            proposal_id (int): The ID of the proposal to mark.
+            actor (str): The actor that acted on the proposal.
+            
+        Returns:
+            bool: True if successfully marked, False otherwise.
+        """
+        try:
+            # check if proposal is already marked
+            if self.db.search(Query().proposal_id == proposal_id):
+                return False
+            self.db.insert({'record_type': 'action', 'context': 'proposal', 'proposal_id': proposal_id, 'actor': actor, 'timestamp': datetime.utcnow().isoformat()})
+            return True
+        except Exception as e:
+            return False
+
     def mark_notification_as_acted(self, notification_hash: str) -> bool:
         """
         Mark a notification as acted upon.
@@ -37,7 +57,7 @@ class MemoryRetention:
                 return False
 
             # Add the hash to the database
-            self.db.insert({'hash': notification_hash, 'timestamp': datetime.utcnow().isoformat()})
+            self.db.insert({'record_type': 'action', 'context': 'notification', 'hash': notification_hash, 'timestamp': datetime.utcnow().isoformat()})
             return True
         except Exception as e:
             print(f"Error marking notification as acted: {str(e)}")

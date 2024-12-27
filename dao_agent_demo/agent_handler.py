@@ -1,4 +1,4 @@
-class SimAgent:
+class AgentHandler:
     def __init__(self, instructions):
         self.instructions = instructions
         self.key = instructions["Key"]
@@ -19,7 +19,7 @@ class SimAgent:
         return ", ".join(f"{key}: {value}" for key, value in self.instructions.items())
 
 
-    def get_sim_instructions_from_json(self):
+    def get_instructions_from_json(self):
         if self.instructions["Type"] == "GM":
             return f"""
             Name: {self.instructions["Name"]}

@@ -16,7 +16,13 @@ from dao_agent_demo.graph_utils import DaohausGraphData
 from dao_agent_demo.image_utils import ImageThumbnailer
 from dao_agent_demo.memory_retention_utils import MemoryRetention
 
-from dao_agent_demo.dao_summon_helpers import assemble_meme_summoner_args, calculate_dao_address, assemble_yeeter_summoner_args
+from dao_agent_demo.prompt_helpers import get_instructions_from_json, get_character_json
+
+from dao_agent_demo.dao_summon_helpers import (
+    assemble_meme_summoner_args, 
+    calculate_dao_address, 
+    assemble_yeeter_summoner_args
+)
 
 from dao_agent_demo.constants_utils import (
     SUMMON_CONTRACTS,
@@ -537,6 +543,21 @@ def get_proposal_count() -> str:
         return proposals
     except Exception as e:
         return f"Error getting proposals count: {str(e)}"
+    
+def check_recent_unacted_proposals():
+    """
+    Check for recent proposals that have not been acted on.
+    """
+    proposals = dh_graph.get_proposals_in_voting()
+    acted_proposals = memory_retention.get_acted_proposals()
+    return [p for p in proposals if p['proposalId'] not in acted_proposals]
+
+
+def mark_proposal_as_acted(proposal_id: int):
+    """
+    Mark a proposal as acted on.
+    """
+    return memory_retention.mark_proposal_as_acted(proposal_id)
 
 # function to cast to farcaster
 def cast_to_farcaster(content: str, channel_id: str = None) -> str:
@@ -571,7 +592,7 @@ def check_all_past_notifications():
     """
     return farcaster_bot.get_notifications()
 
-def check_recent_cast_notifications():
+def check_recent_unacted_cast_notifications():
     """
     Check for a recent farcaster notification that is not acted on and not older than a day.
 
@@ -580,6 +601,7 @@ def check_recent_cast_notifications():
     Returns:
         str: Formatted string of recent notifications
     """
+
     all_notifications = farcaster_bot.get_notifications()
     if isinstance(all_notifications, str):  # If an error occurred
         return all_notifications
@@ -587,7 +609,7 @@ def check_recent_cast_notifications():
     print("acted notes", acted_notifications)
     # If no acted notifications exist, create an empty set
     acted_hashes = {item.get('hash') for item in acted_notifications if 'hash' in item} if acted_notifications else set()
-    print("acted ahshes", acted_hashes)
+    print("acted hashes", acted_hashes)
     # Filter out already acted notifications
     new_notifications = [n for n in all_notifications if n['hash'] not in acted_hashes and n['age_in_sec'] <= 86400]
     print("new notes", new_notifications)
@@ -693,11 +715,59 @@ def get_knowledge_by_keywords(keywords: str) -> str:
     print(keywords.lower().strip().split())
     return memory_retention.query_by_keywords(keywords.lower().strip().split())
 
+def route_to_agent(agent_name: str):
+    """
+    Route a notification to an agent.
+    """
+    agent_name = agent_name.lower()
+    print("routing to", agent_name)
+    operator_agent = operator_agent_list[agent_name]["file_path"]
+    file_json = get_character_json(operator_agent, character_type="OPERATOR")
+    instructions = get_instructions_from_json(file_json, character_type="OPERATOR")
+    return Agent(
+        name=agent_name,
+        instructions=instructions,
+        model="gpt-4o-mini",
+        functions=operator_agent_list[agent_name]["functions"]
+    )
 
+operator_agent_list = {
+    "alderman":{
+        "file_path":"operators/alderman.json",
+        "functions":[route_to_agent]
+        },
+    "taskmaster":{
+        "file_path":"operators/taskmaster.json",
+        "functions":[summon_crowd_fund_dao, summon_meme_token_dao]
+        },
+    "maester":{
+        "file_path":"operators/maester.json",
+        "functions":[get_knowledge_by_keywords]
+        },
+    "bard":{
+        "file_path":"operators/bard.json",
+        "functions":[generate_art]
+        },
+    "governor":{
+        "file_path":"operators/governor.json",
+        "functions":[submit_dao_proposal_onchain, vote_onchain]
+        },
+}
 
+def alderman_agent():
+    """
+    Alderman agent (triage)
+    """
+    file_json = get_character_json(operator_agent_list["alderman"]["file_path"], character_type="OPERATOR")
+    instructions = get_instructions_from_json(file_json, character_type="OPERATOR")
+    return Agent(
+        name="Alderman",
+        instructions=instructions,
+        model="gpt-4o-mini",
+        functions=operator_agent_list["alderman"]["functions"]
+    )
 
 # Create the DAO Agent with all available functions
-print("Creating Agent...")
 def dao_agent(instructions: str ): 
     return Agent(
     name="Agent",
@@ -709,7 +779,7 @@ def dao_agent(instructions: str ):
         generate_art,  # Uncomment this line if you have configured the OpenAI API
         cast_to_farcaster,
         check_cast_replies,
-        check_recent_cast_notifications,
+        check_recent_unacted_cast_notifications,
         check_all_past_notifications,
         mark_notification_as_acted,
         cast_reply,
@@ -768,8 +838,8 @@ def player_agent(instructions: str, name: str = "Player", off_chain: bool = True
 # Initialize FarcvasterBot with your credentials
 farcaster_bot = FarcasterBot()
 # init the graph
-# dh_graph = DaohausGraphData()
-dh_graph = None
+dh_graph = DaohausGraphData()
+# dh_graph = None
 # init memory retention
 memory_retention = MemoryRetention()
     

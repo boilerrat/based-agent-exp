@@ -140,6 +140,7 @@ Modify the `characters` folder to define:
 - **`run.py`:** Handles agent initialization and interval control for autonomous actions.
 - **`characters/`:** json files that define initial prompts and auto thoughts for agents
 - **`knowledge/`:** markdown files in this folder can be loaded into the knowledge base with import_knowledge.py script (file name should contain keywords ex: speedball_fair_token_launch.md)
+- **`operators/`:** json files that define the operator agent
 - **`worlds/`:** directory for world def files that seed a simulation
 
 ---

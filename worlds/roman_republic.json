@@ -33,12 +33,12 @@
             "legionnaires": 10000
         },
         "relationships": {},
-        "gm": "roman_republic/consul.json",
+        "gm": "characters/roman_republic/consul.json",
         "players": [
-            "roman_republic/caesar.json",
-            "roman_republic/magnus.json",
-            "roman_republic/cato_the_younger.json",
-            "roman_republic/cicero.json"
+            "characters/roman_republic/caesar.json",
+            "characters/roman_republic/magnus.json",
+            "characters/roman_republic/cato_the_younger.json",
+            "characters/roman_republic/cicero.json"
         ],
         "turn_order": [0, 1, 2, 3],
         "current_proposal": "",

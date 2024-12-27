@@ -1,9 +1,8 @@
-
 import os
-
 from time import sleep
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
+import pandas as pd
 
 from subgrounds import Subgrounds
 
@@ -67,6 +66,79 @@ class DaohausGraphData:
             return result.to_json()
         except Exception as e:
             return f"Error getting DAO data: {str(e)}"
+        
+    def get_proposals_in_voting(self) -> str:
+        """
+        Get proposals in voting
+        Args:
+            None
+        Returns:
+            str: Proposals in voting
+        """
+        print('>>>> get recent proposals', self.dao_id)
+        try:
+            now = int(datetime.now(timezone.utc).timestamp())
+
+            # Define synthetic fields for the proposal
+            proposal = self.dh_v3.Proposal
+            proposal.ageInSeconds = now - proposal.createdAt
+            proposal.displayYesBalance = proposal.yesBalance / 10**18
+            proposal.displayNoBalance = proposal.noBalance / 10**18
+            
+            # Construct the query
+            proposals = self.dh_v3.Query.proposals(
+                first=10,
+                orderBy="createdAt",
+                orderDirection="desc",
+                where={
+                    "dao": self.dao_id, 
+                    "passed": False,
+                    "votingEnds_gt": now
+                }   
+            )
+
+            # Get main proposal data without votes
+            result = self.sg.query_df([
+                proposals.proposalId,
+                proposals.ageInSeconds,
+                proposals.yesVotes,
+                proposals.noVotes,
+                proposals.createdAt,
+                proposals.details,
+                proposals.votingEnds,
+                proposals.graceEnds,
+                proposals.passed,
+                proposals.displayYesBalance,
+                proposals.displayNoBalance,
+                # Remove proposal.votes from here
+            ])
+
+            # Convert to DataFrame
+            if isinstance(result, list):
+                df = pd.DataFrame(result)
+            else:
+                df = result
+
+            # Get votes data with specific fields
+            votes_query = self.sg.query_df([
+                proposals.proposalId,
+                proposals.votes.approved,
+                proposals.votes.balance,
+                proposals.votes.member.memberAddress,
+            ])
+            
+            if votes_query is not None:
+                votes_df = pd.DataFrame(votes_query)
+                print('>>>> votes_df', votes_df)
+                if not votes_df.empty:
+                    df = df.merge(votes_df, on='proposals_proposalId', how='left')
+
+            print('>>>>', df.to_json(orient='records'))
+            return df.to_json(orient='records')
+
+        except Exception as e:
+            print('>>>> error', e)
+            return f"Error getting proposals data: {str(e)}"
         
     def get_passed_proposals_data(self) -> str:
         """
