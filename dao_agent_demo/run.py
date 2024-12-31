@@ -43,7 +43,7 @@ def run_autonomous_loop():
         #     k=1
         # )[0]
         # thought = f"{character_json['pre_autonomous_thought']} {thought} {character_json['post_autonomous_thought']}"
-        thought = "Hello, can you tell me a story?"
+        thought = "Hello, can you tell me a story about Bob?"
 
         if True or check_recent_unacted_cast_notifications():
             messages.append({"role": "user", "content": thought})

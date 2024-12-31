@@ -28,31 +28,47 @@ def get_character_json(file: str, character_type: str = "PLAYER") -> dict:
     return character_file_json
 
 def get_instructions_from_json(file_json, character_type: str = "PLAYER"):
+    """
+    Creates instruction prompt from all keys in the JSON file with type-specific additions.
+    
+    Args:
+        file_json (dict): The character JSON data
+        character_type (str): Type of character - PLAYER, GM, or OPERATOR
+    
+    Returns:
+        str: Formatted instruction prompt
+    """
+    # Skip these keys as they're not part of the prompt
+    skip_keys = [
+        "autonomous_thoughts",
+        "pre_autonomous_thought", 
+        "post_autonomous_thought",
+        "Type",
+        "Key"
+    ]
+    
+    # Build prompt from all other keys
+    prompt_lines = []
+    for key, value in file_json.items():
+        if key not in skip_keys:
+            prompt_lines.append(f"{key}: {value}")
+    
+    # Add type-specific additions
     if character_type == "GM":
-        return f"""
-        Name: {file_json["Name"]}
-        Identity: {file_json["Identity"]}
-        Functionality: {file_json["Functionality"]}
-        ScenarioBuildingRules: {file_json["ScenarioBuildingRules"]}
-        ConflictResolutionRules: {file_json["ConflictResolutionRules"]}
-        NarrativeFocus: {file_json["NarrativeFocus"]}
-        Platform: {file_json["Platform"]}
-        Extra: {file_json["Extra"]}
-        """
+        prompt_lines.extend([
+            "Extra GM Instructions: You are responsible for managing the simulation and creating engaging scenarios.",
+        ])
     elif character_type == "OPERATOR":
-        return f"""
-        Name: {file_json["Name"]}
-        Identity: {file_json["Identity"]}
-        Functionality: {file_json["Functionality"]}
-        Platform: {file_json["Platform"]}
-        """
-    else:
-        return f"""
-        Name: {file_json["Name"]}
-        Identity: {file_json["Identity"]}
-        Functionality: You have the ability to submit a dao proposal on chain and to generate art. But only do this if specifically prompted to do so.
-        Platform: {file_json["Platform"]}
-        """
+        prompt_lines.extend([
+            "Routing: You will route to the appropriate agent after completing your task. Just do it do not ask for confirmation. If you are not routing, answer why you are not routing."
+        ])
+    elif character_type == "PLAYER":
+        prompt_lines.extend([
+            "Voting Power: You can participate in DAO governance by voting on proposals.",
+            "Collaboration: Work with other players to achieve common goals.",
+        ])
+    
+    return "\n".join(prompt_lines)
 
 def get_thoughts(character_file_json: dict):
     return f"""
@@ -81,23 +97,9 @@ def validate_character_json(character_json, character_type: str):
     
     # Type-specific required fields
     type_specific_fields = {
-        CharacterType.PLAYER: [
-            "alignment",
-            "relationships",
-            "resources",
-            "abilities"
-        ],
-        CharacterType.GM: [
-            "scenario_templates",
-            "resolution_methods",
-            "world_rules"
-        ],
-        CharacterType.OPERATOR: [
-            "autonomous_thoughts",
-            "pre_autonomous_thought",
-            "post_autonomous_thought",
-            "operator_functions"
-        ]
+        CharacterType.PLAYER: [],
+        CharacterType.GM: [],
+        CharacterType.OPERATOR: []
     }
     
     if character_type not in type_specific_fields:
@@ -110,20 +112,6 @@ def validate_character_json(character_json, character_type: str):
     for field in all_required_fields:
         if field not in character_json:
             raise ValueError(f"Missing required field for {character_type.name}: {field}")
-    
-    # Type-specific validation
-    if character_type == CharacterType.PLAYER:
-        if not isinstance(character_json["alignment"], dict):
-            raise ValueError("Alignment must be a dictionary")
-        if not isinstance(character_json["relationships"], dict):
-            raise ValueError("Relationships must be a dictionary")
-            
-    elif character_type == CharacterType.OPERATOR:
-        if not isinstance(character_json["autonomous_thoughts"], list):
-            raise ValueError("autonomous_thoughts must be a list")
-        for thought in character_json["autonomous_thoughts"]:
-            if "text" not in thought or "weight" not in thought:
-                raise ValueError("Each autonomous thought must have 'text' and 'weight' fields")
     
     return True
 

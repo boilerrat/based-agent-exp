@@ -724,12 +724,20 @@ def route_to_agent(agent_name: str):
     operator_agent = operator_agent_list[agent_name]["file_path"]
     file_json = get_character_json(operator_agent, character_type="OPERATOR")
     instructions = get_instructions_from_json(file_json, character_type="OPERATOR")
+    print("instructions", instructions)
+    print("functions", operator_agent_list[agent_name]["functions"])
     return Agent(
         name=agent_name,
         instructions=instructions,
         model="gpt-4o-mini",
         functions=operator_agent_list[agent_name]["functions"]
     )
+
+def route_to_synthesizer(content: str):
+    """
+    Route a notification to the synthesizer.
+    """
+    return route_to_agent("synthesizer")
 
 operator_agent_list = {
     "alderman":{
@@ -746,11 +754,19 @@ operator_agent_list = {
         },
     "bard":{
         "file_path":"operators/bard.json",
-        "functions":[generate_art]
+        "functions":[route_to_synthesizer]
         },
     "governor":{
         "file_path":"operators/governor.json",
         "functions":[submit_dao_proposal_onchain, vote_onchain]
+        },
+    "synthesizer":{
+        "file_path":"operators/synthesizer.json",
+        "functions":[route_to_agent]
+        },
+    "crier":{
+        "file_path":"operators/crier.json",
+        "functions":[]
         },
 }
 

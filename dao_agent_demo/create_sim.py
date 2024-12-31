@@ -57,8 +57,6 @@ def generate_character_json(prompt, num_players: int):
             "[\n"
                 '{"Name": "The name of the character 1.",\n'
                 '"Identity": "The Identity of the character 1."\n'
-                '"Functionality": "The functionality of the character 1.",\n'
-                '"Communications": "The communications of the character 1.",\n'
                 '"Platform": "The platform of the character 1.",\n'
                 '"Goal": "The goal of the character 1."},\n'
                 '},\n'
@@ -109,7 +107,6 @@ def generate_gm_json(prompt, player_configs):
                 '"Functionality": "The functionality of the gm.",\n'
                 '"ScenarioBuildingRules": "The scenario building rules of the gm.",\n'
                 '"NarrativeFocus": "The narrative focus of the gm.",\n'
-                '"Platform": "The platform of the gm.",\n'
                 '"Extra": "Extra information about the gm."\n'
             "}\n"
             "Do not include any additional text or explanations. Only provide the response in this format.")}
