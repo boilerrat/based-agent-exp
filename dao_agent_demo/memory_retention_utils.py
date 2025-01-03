@@ -124,6 +124,17 @@ class MemoryRetention:
             return acted_notifications
         except Exception as e:
             return f"Error getting memories: {str(e)}"
+        
+    def get_acted_proposals(self) -> List:
+        """
+        Get all acted proposals
+
+        Returns:
+            List: List of acted proposals
+        """
+        query = Query()
+        acted_proposals = self.db.search(query.proposal_id.exists())
+        return acted_proposals
     
     def get_all_memories(self) -> List:
         """

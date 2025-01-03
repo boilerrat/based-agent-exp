@@ -60,7 +60,7 @@ def get_instructions_from_json(file_json, character_type: str = "PLAYER"):
         ])
     elif character_type == "OPERATOR":
         prompt_lines.extend([
-            "Routing: You will route to the appropriate agent after completing your task. Just do it do not ask for confirmation. If you are not routing, answer why you are not routing."
+            "Routing: You will always send the result of your task to the appropriate agent after completion. Just do it do not ask for confirmation."
         ])
     elif character_type == "PLAYER":
         prompt_lines.extend([

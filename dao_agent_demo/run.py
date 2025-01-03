@@ -7,7 +7,8 @@ from swarm import Swarm
 from swarm.repl import run_demo_loop
 from openai import OpenAI
 
-from dao_agent_demo.agents import alderman_agent, dao_agent, gm_agent, player_agent, check_recent_unacted_cast_notifications
+from dao_agent_demo.agents import alderman_agent, dao_agent, gm_agent, player_agent
+from dao_agent_demo.tools import check_recent_unacted_cast_notifications, check_recent_unacted_proposals
 from dao_agent_demo.logs import pretty_print_messages
 from dao_agent_demo.prompt_helpers import (
     get_character_json, 
@@ -43,14 +44,48 @@ def run_autonomous_loop():
         #     k=1
         # )[0]
         # thought = f"{character_json['pre_autonomous_thought']} {thought} {character_json['post_autonomous_thought']}"
-        thought = "Hello, can you tell me a story about Bob?"
+        
+        
+        new_notification = check_recent_unacted_cast_notifications()
+        new_proposal = check_recent_unacted_proposals()
+        debug = os.getenv("DEBUG")
+        
 
-        if True or check_recent_unacted_cast_notifications():
-            messages.append({"role": "user", "content": thought})
+        # if debug:
+        #     thought = "Hello, can you tell me about fair launch tokens?"
+        #     messages.append({"role": "user", "content": thought})
 
-            print(f"\n\033[90mAgent's Thought:\033[0m {thought}")
+        #     print(f"\n\033[90mAgent's Thought:\033[0m {thought}")
 
-            print("\n\033[90mChecking for new cast notifications...\033[0m")
+        #     # Run the agent to generate a response and take action
+        #     response = client.run(agent=agent, messages=messages, stream=True)
+
+        #     # Process and print the streaming response
+        #     response_obj = process_and_print_streaming_response(response)
+
+        #     # Update messages with the new response
+        #     messages.extend(response_obj.messages)
+        
+        # check for new notifications first
+        if new_notification:
+            print("\n\033[90mNew cast notification found...\033[0m")
+            messages.append({"role": "user", "content": new_notification})
+        else:
+            print("\n\033[90mNo new cast notifications found...\033[0m")
+            if new_proposal:
+                print("\n\033[90mNew proposals found...\033[0m")
+                print(new_proposal)
+                # Get the first proposal from the list and parse its details
+                proposal = new_proposal[0]  # Access first item in list
+                details = json.loads(proposal['proposals_details'])  # Parse the JSON string
+                messages.append({
+                    "role": "user", 
+                    "content": f"New Proposal for governor: {details['title']} -- {details['description']}"
+                })
+            else:
+                print("\n\033[90mNo new proposals found...\033[0m")
+            
+        if messages:
             # Run the agent to generate a response and take action
             response = client.run(agent=agent, messages=messages, stream=True)
 
@@ -59,8 +94,6 @@ def run_autonomous_loop():
 
             # Update messages with the new response
             messages.extend(response_obj.messages)
-        else:
-            print("\n\033[90mNo new cast notifications found...\033[0m")
 
 
         # Set a random interval between 600 and 3600 seconds
@@ -278,10 +311,10 @@ def choose_mode():
 def process_and_print_streaming_response(response):
     content = ""
     last_sender = ""
-
     for chunk in response:
         if "sender" in chunk:
             last_sender = chunk["sender"]
+            print('last_sender>>>>', last_sender)
 
         if "content" in chunk and chunk["content"] is not None:
             if not content and last_sender:
