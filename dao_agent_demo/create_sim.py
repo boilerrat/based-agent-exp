@@ -215,17 +215,12 @@ def generate_world_simulation(
     world_file_path = f"{world_dir}/{world_slug}.json"
 
     # Generate and save GM character file
-    gm_data = {
+    gm_extra_data = {
         "Type": "GM",
-        "Name": gm_config["Name"],
         "Key": "GM_0",
-        "Identity": gm_config["Identity"],
-        "Functionality": gm_config["Functionality"],
-        "ScenarioBuildingRules": gm_config["ScenarioBuildingRules"],
-        "NarrativeFocus": gm_config["NarrativeFocus"],
-        "Platform": gm_config["Platform"],
-        "Extra": gm_config["Extra"]
     }
+    # merge gm extra data and gm_config to gm_data
+    gm_data = {**gm_extra_data, **gm_config}
     gm_file_path = f"{character_dir}/{slugify(gm_config['Name'])}.json"
 
     try:
@@ -249,7 +244,7 @@ def generate_world_simulation(
             print(f"Player file saved to {player_file_path}")
         
         world_data["Initial"]["turn_order"] = list(range(len(player_configs)))    
-        world_gm_file_path = f"{world_slug}/{slugify(gm_config['Name'])}.json"
+        world_gm_file_path = f"characters/{world_slug}/{slugify(gm_config['Name'])}.json"
         world_data["Initial"]["gm"] = world_gm_file_path
 
         with open(world_file_path, "w") as world_file:

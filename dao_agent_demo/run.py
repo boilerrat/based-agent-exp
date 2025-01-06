@@ -104,66 +104,6 @@ def run_autonomous_loop():
         time.sleep(get_interval())
 
 
-# this is the main loop that runs the agent in two-agent mode
-# you can modify this to change the behavior of the agent
-def run_openai_conversation_loop(agent):
-    """Facilitates a conversation between an OpenAI-powered agent and the DAO Agent."""
-    client = Swarm()
-    openai_client = OpenAI()
-    messages = []
-
-    print("Starting OpenAI-DAO Agent conversation loop...")
-
-    # Initial prompt to start the conversation
-    openai_messages = [{
-        "role":
-        "system",
-        "content":
-        ("You are a user guiding a blockchain agent through various tasks on the Base blockchain."
-         "Engage in a conversation, suggesting actions and responding to the agent's outputs. Be creative and explore different blockchain capabilities."
-         "You're not simulating a conversation, but you will be in one yourself. Make sure you follow the rules of improv and always ask for some sort of function to occur."
-         "Be unique and interesting."
-        )
-    }, {
-        "role":
-        "user",
-        "content":
-        "Start a conversation with the DAO Agent and guide it through some blockchain tasks."
-    }]
-
-    while True:
-        # Generate OpenAI response
-        openai_response = openai_client.chat.completions.create(
-            model="gpt-4o-mini", messages=openai_messages)
-
-        openai_message = openai_response.choices[0].message.content
-        print(f"\n\033[92mOpenAI Guide:\033[0m {openai_message}")
-
-        # Send OpenAI's message to DAO Agent
-        messages.append({"role": "user", "content": openai_message})
-        response = client.run(agent=agent, messages=messages, stream=True)
-        response_obj = process_and_print_streaming_response(response)
-
-        # Update messages with DAO Agent's response
-        messages.extend(response_obj.messages)
-
-        # Add DAO Agent's response to OpenAI conversation
-        dao_agent_response = response_obj.messages[-1][
-            "content"] if response_obj.messages else "No response from DAO Agent."
-        openai_messages.append({
-            "role":
-            "user",
-            "content":
-            f"DAO Agent response: {dao_agent_response}"
-        })
-
-        # Check if user wants to continue
-        user_input = input(
-            "\nPress Enter to continue the conversation, or type 'exit' to end: "
-        )
-        if user_input.lower() == 'exit':
-            break
-
 def run_dao_simulation_loop(world=None, off_chain=False):
     """
     Runs the DAO governance simulation loop.
@@ -199,7 +139,7 @@ def run_dao_simulation_loop(world=None, off_chain=False):
                 break
 
     # Set agents for the GM and players
-    gm.set_agent(gm_agent(gm.get_instructions_from_json(), gm.name, off_chain))
+    gm.set_agent(gm_agent(json.dumps(gm.get_instructions_from_json()), gm.name, off_chain))
     for player in players:
         player.set_agent(player_agent(player.get_instructions_from_json(), player.name, off_chain))
         
@@ -285,8 +225,7 @@ def choose_mode():
         print("\nAvailable modes:")
         print("1. chat    - Interactive chat mode")
         print("2. auto    - Autonomous action mode")
-        print("3. two-agent - AI-to-agent conversation mode")
-        print("4. dao-simulation - DAO simulation mode")
+        print("3. dao-simulation - DAO simulation mode")
 
         choice = input(
             "\nChoose a mode (enter number or name): ").lower().strip()
@@ -294,11 +233,9 @@ def choose_mode():
         mode_map = {
             '1': 'chat',
             '2': 'auto',
-            '3': 'two-agent',
-            '4': 'dao-simulation',
+            '3': 'dao-simulation',
             'chat': 'chat',
             'auto': 'auto',
-            'two-agent': 'two-agent',
             'dao-simulation': 'dao-simulation'
         }
 
@@ -348,7 +285,6 @@ def main(mode, character_file_path):
     mode_functions = {
         'chat': lambda: run_demo_loop(dao_agent(instructions)),
         'auto': lambda: run_autonomous_loop(),
-        'two-agent': lambda: run_openai_conversation_loop(dao_agent(instructions)),
         'dao-simulation': lambda: run_dao_simulation_loop()
     }
 
