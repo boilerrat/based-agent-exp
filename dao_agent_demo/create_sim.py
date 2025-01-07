@@ -57,8 +57,6 @@ def generate_character_json(prompt, num_players: int):
             "[\n"
                 '{"Name": "The name of the character 1.",\n'
                 '"Identity": "The Identity of the character 1."\n'
-                '"Functionality": "The functionality of the character 1.",\n'
-                '"Communications": "The communications of the character 1.",\n'
                 '"Platform": "The platform of the character 1.",\n'
                 '"Goal": "The goal of the character 1."},\n'
                 '},\n'
@@ -109,7 +107,6 @@ def generate_gm_json(prompt, player_configs):
                 '"Functionality": "The functionality of the gm.",\n'
                 '"ScenarioBuildingRules": "The scenario building rules of the gm.",\n'
                 '"NarrativeFocus": "The narrative focus of the gm.",\n'
-                '"Platform": "The platform of the gm.",\n'
                 '"Extra": "Extra information about the gm."\n'
             "}\n"
             "Do not include any additional text or explanations. Only provide the response in this format.")}
@@ -218,17 +215,12 @@ def generate_world_simulation(
     world_file_path = f"{world_dir}/{world_slug}.json"
 
     # Generate and save GM character file
-    gm_data = {
+    gm_extra_data = {
         "Type": "GM",
-        "Name": gm_config["Name"],
         "Key": "GM_0",
-        "Identity": gm_config["Identity"],
-        "Functionality": gm_config["Functionality"],
-        "ScenarioBuildingRules": gm_config["ScenarioBuildingRules"],
-        "NarrativeFocus": gm_config["NarrativeFocus"],
-        "Platform": gm_config["Platform"],
-        "Extra": gm_config["Extra"]
     }
+    # merge gm extra data and gm_config to gm_data
+    gm_data = {**gm_extra_data, **gm_config}
     gm_file_path = f"{character_dir}/{slugify(gm_config['Name'])}.json"
 
     try:
@@ -244,7 +236,7 @@ def generate_world_simulation(
                 try:
                     json.dump(player, player_file, indent=4)
                     print(f"Player file saved to {player_file_path}")
-                    world_player_file_path = f"{world_slug}/{character_slug}.json"
+                    world_player_file_path = f"characters/{world_slug}/{character_slug}.json"
                     world_data["Initial"]["players"].append(world_player_file_path)
                 except Exception as e:
                     print(f"Error generating character simulation: {str(e)}")
@@ -252,7 +244,7 @@ def generate_world_simulation(
             print(f"Player file saved to {player_file_path}")
         
         world_data["Initial"]["turn_order"] = list(range(len(player_configs)))    
-        world_gm_file_path = f"{world_slug}/{slugify(gm_config['Name'])}.json"
+        world_gm_file_path = f"characters/{world_slug}/{slugify(gm_config['Name'])}.json"
         world_data["Initial"]["gm"] = world_gm_file_path
 
         with open(world_file_path, "w") as world_file:

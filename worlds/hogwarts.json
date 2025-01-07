@@ -39,11 +39,11 @@
         },
         "relationships": {
         },
-        "gm": "hogwarts/sorting_hat.json",
+        "gm": "characters/hogwarts/sorting_hat.json",
         "players": [
-            "hogwarts/lila.json",
-            "hogwarts/rowan.json",
-            "hogwarts/sabastian.json"
+            "characters/hogwarts/lila.json",
+            "characters/hogwarts/rowan.json",
+            "characters/hogwarts/sabastian.json"
         ],
         "turn_order": [0, 1, 2],
         "current_proposal": "",

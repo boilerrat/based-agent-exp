@@ -7,16 +7,18 @@ from swarm import Swarm
 from swarm.repl import run_demo_loop
 from openai import OpenAI
 
-from dao_agent_demo.agents import dao_agent, gm_agent, player_agent, check_recent_cast_notifications
+from dao_agent_demo.agents import alderman_agent, dao_agent, gm_agent, player_agent
+from dao_agent_demo.tools import check_recent_unacted_cast_notifications, check_recent_unacted_proposals
 from dao_agent_demo.logs import pretty_print_messages
 from dao_agent_demo.prompt_helpers import (
-    set_character_file, get_character_json, get_instructions, dao_simulation_setup, 
-    extract_vote, check_alignment, update_narrative, roll_d20,
-    get_instructions_from_file, resolve_round_with_relationships
+    get_character_json, 
+    get_instructions_from_json,
+    dao_simulation_setup,
     )
 from dao_agent_demo.interval_utils import get_interval, set_random_interval
 import dao_agent_demo.sim_phases as sim_phases
 from dao_agent_demo.worlds import fetch_world_files
+
 
 
 lower_interval = 20
@@ -24,28 +26,66 @@ upper_interval = 100
 
 # this is the main loop that runs the agent in autonomous mode
 # you can modify this to change the behavior of the agent
-def run_autonomous_loop(agent):
+def run_autonomous_loop():
     client = Swarm()
     messages = []
 
     print("Starting autonomous DAO Agent loop...")
-    character_json = get_character_json()
+    file_json = get_character_json("operators/alderman.json", character_type="OPERATOR")
+    character_json = get_instructions_from_json(file_json)
+
+    agent = alderman_agent()
 
     while True:
         # Generate a thought
-        thought = random.choices(
-            population=[thought['text'] for thought in character_json["autonomous_thoughts"]],
-            weights=[thought['weight'] for thought in character_json["autonomous_thoughts"]],
-            k=1
-        )[0]
-        thought = f"{character_json['pre_autonomous_thought']} {thought} {character_json['post_autonomous_thought']}"
+        # thought = random.choices(
+        #     population=[thought['text'] for thought in character_json["autonomous_thoughts"]],
+        #     weights=[thought['weight'] for thought in character_json["autonomous_thoughts"]],
+        #     k=1
+        # )[0]
+        # thought = f"{character_json['pre_autonomous_thought']} {thought} {character_json['post_autonomous_thought']}"
+        
+        
+        new_notification = check_recent_unacted_cast_notifications()
+        new_proposal = check_recent_unacted_proposals()
+        debug = os.getenv("DEBUG")
+        
 
-        if check_recent_cast_notifications():
-            messages.append({"role": "user", "content": thought})
+        # if debug:
+        #     thought = "Hello, can you tell me about fair launch tokens?"
+        #     messages.append({"role": "user", "content": thought})
 
-            print(f"\n\033[90mAgent's Thought:\033[0m {thought}")
+        #     print(f"\n\033[90mAgent's Thought:\033[0m {thought}")
 
-            print("\n\033[90mChecking for new cast notifications...\033[0m")
+        #     # Run the agent to generate a response and take action
+        #     response = client.run(agent=agent, messages=messages, stream=True)
+
+        #     # Process and print the streaming response
+        #     response_obj = process_and_print_streaming_response(response)
+
+        #     # Update messages with the new response
+        #     messages.extend(response_obj.messages)
+        
+        # check for new notifications first
+        if new_notification:
+            print("\n\033[90mNew cast notification found...\033[0m")
+            messages.append({"role": "user", "content": new_notification})
+        else:
+            print("\n\033[90mNo new cast notifications found...\033[0m")
+            if new_proposal:
+                print("\n\033[90mNew proposals found...\033[0m")
+                print(new_proposal)
+                # Get the first proposal from the list and parse its details
+                proposal = new_proposal[0]  # Access first item in list
+                details = json.loads(proposal['proposals_details'])  # Parse the JSON string
+                messages.append({
+                    "role": "user", 
+                    "content": f"New Proposal for governor: {details['title']} -- {details['description']}"
+                })
+            else:
+                print("\n\033[90mNo new proposals found...\033[0m")
+            
+        if messages:
             # Run the agent to generate a response and take action
             response = client.run(agent=agent, messages=messages, stream=True)
 
@@ -54,8 +94,7 @@ def run_autonomous_loop(agent):
 
             # Update messages with the new response
             messages.extend(response_obj.messages)
-        else:
-            print("\n\033[90mNo new cast notifications found...\033[0m")
+
 
         # Set a random interval between 600 and 3600 seconds
         set_random_interval(lower_interval, upper_interval)
@@ -64,66 +103,6 @@ def run_autonomous_loop(agent):
         # Wait for the specified interval
         time.sleep(get_interval())
 
-
-# this is the main loop that runs the agent in two-agent mode
-# you can modify this to change the behavior of the agent
-def run_openai_conversation_loop(agent):
-    """Facilitates a conversation between an OpenAI-powered agent and the DAO Agent."""
-    client = Swarm()
-    openai_client = OpenAI()
-    messages = []
-
-    print("Starting OpenAI-DAO Agent conversation loop...")
-
-    # Initial prompt to start the conversation
-    openai_messages = [{
-        "role":
-        "system",
-        "content":
-        ("You are a user guiding a blockchain agent through various tasks on the Base blockchain."
-         "Engage in a conversation, suggesting actions and responding to the agent's outputs. Be creative and explore different blockchain capabilities."
-         "You're not simulating a conversation, but you will be in one yourself. Make sure you follow the rules of improv and always ask for some sort of function to occur."
-         "Be unique and interesting."
-        )
-    }, {
-        "role":
-        "user",
-        "content":
-        "Start a conversation with the DAO Agent and guide it through some blockchain tasks."
-    }]
-
-    while True:
-        # Generate OpenAI response
-        openai_response = openai_client.chat.completions.create(
-            model="gpt-4o-mini", messages=openai_messages)
-
-        openai_message = openai_response.choices[0].message.content
-        print(f"\n\033[92mOpenAI Guide:\033[0m {openai_message}")
-
-        # Send OpenAI's message to DAO Agent
-        messages.append({"role": "user", "content": openai_message})
-        response = client.run(agent=agent, messages=messages, stream=True)
-        response_obj = process_and_print_streaming_response(response)
-
-        # Update messages with DAO Agent's response
-        messages.extend(response_obj.messages)
-
-        # Add DAO Agent's response to OpenAI conversation
-        dao_agent_response = response_obj.messages[-1][
-            "content"] if response_obj.messages else "No response from DAO Agent."
-        openai_messages.append({
-            "role":
-            "user",
-            "content":
-            f"DAO Agent response: {dao_agent_response}"
-        })
-
-        # Check if user wants to continue
-        user_input = input(
-            "\nPress Enter to continue the conversation, or type 'exit' to end: "
-        )
-        if user_input.lower() == 'exit':
-            break
 
 def run_dao_simulation_loop(world=None, off_chain=False):
     """
@@ -160,9 +139,9 @@ def run_dao_simulation_loop(world=None, off_chain=False):
                 break
 
     # Set agents for the GM and players
-    gm.set_agent(gm_agent(gm.get_sim_instructions_from_json(), gm.name, off_chain))
+    gm.set_agent(gm_agent(json.dumps(gm.get_instructions_from_json()), gm.name, off_chain))
     for player in players:
-        player.set_agent(player_agent(player.get_sim_instructions_from_json(), player.name, off_chain))
+        player.set_agent(player_agent(player.get_instructions_from_json(), player.name, off_chain))
         
      # Initialize extra arguments
     extra_args = {}
@@ -246,8 +225,7 @@ def choose_mode():
         print("\nAvailable modes:")
         print("1. chat    - Interactive chat mode")
         print("2. auto    - Autonomous action mode")
-        print("3. two-agent - AI-to-agent conversation mode")
-        print("4. dao-simulation - DAO simulation mode")
+        print("3. dao-simulation - DAO simulation mode")
 
         choice = input(
             "\nChoose a mode (enter number or name): ").lower().strip()
@@ -255,11 +233,9 @@ def choose_mode():
         mode_map = {
             '1': 'chat',
             '2': 'auto',
-            '3': 'two-agent',
-            '4': 'dao-simulation',
+            '3': 'dao-simulation',
             'chat': 'chat',
             'auto': 'auto',
-            'two-agent': 'two-agent',
             'dao-simulation': 'dao-simulation'
         }
 
@@ -272,10 +248,10 @@ def choose_mode():
 def process_and_print_streaming_response(response):
     content = ""
     last_sender = ""
-
     for chunk in response:
         if "sender" in chunk:
             last_sender = chunk["sender"]
+            print('last_sender>>>>', last_sender)
 
         if "content" in chunk and chunk["content"] is not None:
             if not content and last_sender:
@@ -300,15 +276,15 @@ def process_and_print_streaming_response(response):
             return chunk["response"]
 
 
-def main(mode): 
+def main(mode, character_file_path): 
 
     mode = mode or choose_mode()
-    instructions = get_instructions()
+    json = get_character_json(character_file_path, character_type="OPERATOR")
+    instructions = get_instructions_from_json(json, character_type="OPERATOR")
 
     mode_functions = {
         'chat': lambda: run_demo_loop(dao_agent(instructions)),
-        'auto': lambda: run_autonomous_loop(dao_agent(instructions)),
-        'two-agent': lambda: run_openai_conversation_loop(dao_agent(instructions)),
+        'auto': lambda: run_autonomous_loop(),
         'dao-simulation': lambda: run_dao_simulation_loop()
     }
 
@@ -320,12 +296,11 @@ if __name__ == "__main__":
     mode = ""
     if len(sys.argv) > 1:
         character_file_path = sys.argv[1].lower().strip()
-        set_character_file(character_file_path)
         if len(sys.argv) > 2:
             mode = sys.argv[2].lower().strip()
     else:
-        character_file_path = "default_character_data.json"
-        set_character_file(character_file_path)
-    print(f"Starting DAO Agent ({character_file_path})...")
-    main(mode)
+        character_file_path = "characters/default_character_data.json"
+
+    print(f"Starting DAO Agent ({character_file_path}) with mode {mode}...")
+    main(mode, character_file_path)
 

@@ -27,11 +27,11 @@
         },
         "population": 5000,
         "relationships": {},
-        "gm": "moon_is_a_harsh_mistress/overseer.json",
+        "gm": "characters/moon_is_a_harsh_mistress/overseer.json",
         "players": [
-            "moon_is_a_harsh_mistress/wyoh.json",
-            "moon_is_a_harsh_mistress/manny.json",
-            "moon_is_a_harsh_mistress/prof.json"
+            "characters/moon_is_a_harsh_mistress/wyoh.json",
+            "characters/moon_is_a_harsh_mistress/manny.json",
+            "characters/moon_is_a_harsh_mistress/prof.json"
         ],
         "turn_order": [0,1,2],
         "current_proposal": "",

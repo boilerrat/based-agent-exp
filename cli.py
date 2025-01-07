@@ -3,6 +3,7 @@ import os
 
 from dao_agent_demo.worlds import fetch_world_files
 world_choices = fetch_world_files(os.path.join(os.path.dirname(__file__), "worlds"))
+from dao_agent_demo.prompt_helpers import get_character_json, get_instructions_from_json
 
 @click.group()
 def cli():
@@ -26,9 +27,8 @@ def chat(character_file: str):
     click.echo(click.style(f"Running agent chat Character Definition file: {click.style(character_file, fg='blue')}", fg="yellow"))
     from dao_agent_demo.agents import dao_agent
     from dao_agent_demo.run import run_demo_loop
-    from dao_agent_demo.prompt_helpers import get_instructions, set_character_file
-    set_character_file(f"{character_file.split('/')[-1]}")
-    instructions = get_instructions()
+    file_json = get_character_json(character_file, character_type="OPERATOR")
+    instructions = get_instructions_from_json(file_json)
     run_demo_loop(dao_agent(instructions))
 
 @cli.command()
@@ -44,35 +44,8 @@ def auto(character_file: str):
     Run an autonomous simulation with the DAO Agent
     """
     click.echo(click.style(f"Running autonomus agent conversation Character Definition file: {click.style(character_file, fg='blue')}", fg="yellow"))
-    from dao_agent_demo.agents import dao_agent
-    from dao_agent_demo.run import run_demo_loop
-    from dao_agent_demo.prompt_helpers import get_instructions, set_character_file
-    set_character_file(f"{character_file.split('/')[-1]}")
-    instructions = get_instructions()
     from dao_agent_demo.run import run_autonomous_loop
-    run_autonomous_loop(dao_agent(instructions))
-
-
-@cli.command()
-@click.option(
-    "--character-file",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False),
-    help="Path to the Character Definition JSON file",
-    default="characters/default_character_data.json",
-    show_default=True
-)
-def two_agent(character_file: str):
-    """
-    Run a two-agent simulation with the DAO Agent
-    """
-    click.echo(click.style(f"Running two-agent simulation Character Definition file: {click.style(character_file, fg='blue')}", fg="yellow"))
-    from dao_agent_demo.agents import dao_agent
-    from dao_agent_demo.run import run_demo_loop
-    from dao_agent_demo.prompt_helpers import get_instructions, set_character_file
-    set_character_file(f"{character_file.split('/')[-1]}")
-    instructions = get_instructions()
-    from dao_agent_demo.run import run_openai_conversation_loop
-    run_openai_conversation_loop(dao_agent(instructions))
+    run_autonomous_loop()
 
 
 @cli.command()
